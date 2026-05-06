@@ -1,34 +1,39 @@
 package main
 
 import (
+	"cobackend/internal/auth"
 	"cobackend/internal/db"
+	"fmt"
 	"log"
 	"net/http"
+	"os"
 
-	"fmt"
-
+	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
 
-	"cobackend/internal/auth"
 )
 
 func main() {
 
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
+	_ = godotenv.Load()
 
-	dbConn, err := db.Connect()
+	_, err := db.Connect()
 	if err != nil {
 		log.Fatal("DB Connection Failed:", err)
 	}
 
-	fmt.Println(dbConn)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
 
-	mux := http.NewServeMux()
+	r := chi.NewRouter()
+	auth.RegisterRoutes(r)
+	log.Println("Server running on :" + port)
 
-	auth.RegisterRoutes(mux)
+	err = http.ListenAndServe(":"+port, r)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	http.ListenAndServe(":8080", mux)
 }

@@ -1,10 +1,12 @@
 package auth
 
 import (
-	"net/http"
+	"github.com/go-chi/chi/v5"
 )
 
-func RegisterRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/auth/register", RegisterHandler)
-	// mux.HandleFunc("/auth/login", LoginHandler)
+func RegisterRoutes(r chi.Router) {
+
+	r.Route("/auth", func(r chi.Router) {
+		r.Post("/login", LoginHandler)
+	})
 }

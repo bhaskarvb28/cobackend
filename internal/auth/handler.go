@@ -5,19 +5,37 @@ import (
 	"net/http"
 )
 
-func RegisterHandler(w http.ResponseWriter, r *http.Request) {
-	var input RegisterInput
+func LoginHandler(w http.ResponseWriter, r *http.Request) {
+	var input LoginInput
 
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
-		return
-	}
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
 
-	err := Register(r.Context(), input)
+	err := decoder.Decode(&input)
+
 	if err != nil {
-		http.Error(w, err.Error(), 400)
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return 
+	}
+
+	// optional validation
+	if input.Email == "" || input.Password == "" {
+		http.Error(w, "email and password are required", http.StatusBadRequest)
 		return
 	}
 
-	w.Write([]byte("user created"))
+	// Login should return JWT token
+	token, err := Login(r.Context(), input)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return 
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Login Successful",
+		"token" : token,
+	})
 }
