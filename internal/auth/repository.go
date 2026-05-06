@@ -3,7 +3,6 @@ package auth
 import (
 	"cobackend/internal/db"
 	"context"
-	"fmt"
 )
 
 // func CreateUser(ctx context.Context, input RegisterInput, hashed string) error {
