@@ -3,7 +3,6 @@ package main
 import (
 	"cobackend/internal/auth"
 	"cobackend/internal/db"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
