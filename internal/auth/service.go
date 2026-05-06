@@ -35,7 +35,7 @@ func Login(ctx context.Context, input LoginInput) (string, error) {
 	}
 
 	// generate jwt
-	token, err := GenerateJWT(user.ID, user.RoleID)
+	token, err := GenerateJWT(user.ID, user.RoleID, user.Role)
 	if err != nil {
 		return "", err
 	}

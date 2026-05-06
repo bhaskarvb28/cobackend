@@ -3,6 +3,7 @@ package auth
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
 )
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -15,8 +16,12 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
-		return 
+		return
 	}
+
+	// Trim whitespace from email
+	input.Email = strings.TrimSpace(input.Email)
+	input.Password = strings.TrimSpace(input.Password)
 
 	// optional validation
 	if input.Email == "" || input.Password == "" {
@@ -28,7 +33,7 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	token, err := Login(r.Context(), input)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return 
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -36,6 +41,6 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	json.NewEncoder(w).Encode(map[string]string{
 		"message": "Login Successful",
-		"token" : token,
+		"token":   token,
 	})
 }

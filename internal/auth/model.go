@@ -18,4 +18,6 @@ type AuthUser struct {
 	Email string 
 	Password string
 	RoleID string
+	Role string
 }
+
