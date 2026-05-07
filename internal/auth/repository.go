@@ -5,22 +5,6 @@ import (
 	"context"
 )
 
-// func CreateUser(ctx context.Context, input RegisterInput, hashed string) error {
-// 	_, err := db.DB.Exec(ctx,
-// 		`INSERT INTO profiles 
-// 		(id, first_name, last_name, email, password, contact_number)
-// 		VALUES ($1,$2,$3,$4,$5,$6)`,
-// 		uuid.New(),
-// 		input.FirstName,
-// 		input.LastName,
-// 		input.Email,
-// 		hashed,
-// 		input.ContactNumber,
-// 	)
-
-// 	return err
-// }
-
 func GetUserByEmail(ctx context.Context, email string) (AuthUser, error) {
 	var user AuthUser
     err := db.DB.QueryRow(ctx,

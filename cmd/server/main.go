@@ -2,7 +2,14 @@ package main
 
 import (
 	"cobackend/internal/auth"
+	"cobackend/internal/states"
+	"cobackend/internal/districts"
+	"cobackend/internal/superadmin"
+
+	
 	"cobackend/internal/db"
+
+
 	"log"
 	"net/http"
 	"os"
@@ -28,6 +35,10 @@ func main() {
 
 	r := chi.NewRouter()
 	auth.RegisterRoutes(r)
+	states.RegisterRoutes(r)
+	districts.RegisterRoutes(r)
+	superadmin.RegisterRoutes(r)
+	
 	log.Println("Server running on :" + port)
 
 	err = http.ListenAndServe(":"+port, r)

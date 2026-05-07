@@ -28,6 +28,6 @@ type AuthUser struct {
 type Claims struct {
 	UserID string `json:"sub"`
 	RoleID string `json:"role"`
-	Role   string `json:"role_name"`
+	RoleName   string `json:"role_name"`
 	jwt.RegisteredClaims
 }
