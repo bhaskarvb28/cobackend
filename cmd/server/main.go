@@ -5,6 +5,7 @@ import (
 	"cobackend/internal/states"
 	"cobackend/internal/districts"
 	"cobackend/internal/superadmin"
+	"cobackend/internal/districtadmin"
 
 	
 	"cobackend/internal/db"
@@ -38,6 +39,7 @@ func main() {
 	states.RegisterRoutes(r)
 	districts.RegisterRoutes(r)
 	superadmin.RegisterRoutes(r)
+	districtadmin.RegisterRoutes(r)
 	
 	log.Println("Server running on :" + port)
 

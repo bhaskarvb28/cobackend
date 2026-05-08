@@ -113,7 +113,7 @@ func CreateStateAdminRepository(
 	_, err = tx.Exec(
 		ctx,
 		`
-		INSERT INTO state_admins (
+		INSERT INTO state_admin (
 			profile_id,
 			assigned_state
 		)
@@ -173,7 +173,7 @@ func UpdateAssignedStateRepository(
 	_, err := db.DB.Exec(
 		ctx,
 		`
-		UPDATE state_admins
+		UPDATE state_admin
 		SET assigned_state = $1
 		WHERE profile_id = $2
 		`,
@@ -222,7 +222,7 @@ func GetStateAdminsRepository(
 		p.contact_number,
 		sa.assigned_state
 	FROM profiles p
-	INNER JOIN state_admins sa
+	INNER JOIN state_admin sa
 		ON p.id = sa.profile_id
 	WHERE 1=1
 	`
