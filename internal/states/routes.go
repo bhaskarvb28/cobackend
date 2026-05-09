@@ -3,6 +3,7 @@ package states
 import (
 	"github.com/go-chi/chi/v5"
 
+	"cobackend/internal/districts"
 	"cobackend/internal/middleware"
 )
 
@@ -13,5 +14,10 @@ func RegisterRoutes(r chi.Router) {
 		r.Use(middleware.AuthMiddleware)
 
 		r.Get("/", GetStatesHandler)
+
+		r.Get(
+			"/{state_id}/districts",
+			districts.GetDistrictsByStateIdHandler,
+		)
 	})
 }

@@ -7,9 +7,10 @@ import (
 	"strings"
 
 	"cobackend/internal/auth"
+	"cobackend/internal/shared"
+	"cobackend/internal/utils"
 
 	"github.com/golang-jwt/jwt/v5"
-
 )
 
 type contextKey string
@@ -24,19 +25,41 @@ func AuthMiddleware(next http.Handler) http.Handler {
 
 	jwtSecret := []byte(os.Getenv("JWT_SECRET"))
 
+	if len(jwtSecret) == 0 {
+		panic("JWT_SECRET is not configured")
+	}
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 		authHeader := r.Header.Get("Authorization")
 
 		if authHeader == "" {
-			http.Error(w, "Missing authorization header", http.StatusUnauthorized)
+
+			utils.WriteJSON(
+				w,
+				http.StatusUnauthorized,
+				shared.APIResponse{
+					Success: false,
+					Message: "Missing authorization header",
+				},
+			)
+
 			return
 		}
 
 		splitToken := strings.Split(authHeader, " ")
 
 		if len(splitToken) != 2 || splitToken[0] != "Bearer" {
-			http.Error(w, "Invalid authorization header", http.StatusUnauthorized)
+
+			utils.WriteJSON(
+				w,
+				http.StatusUnauthorized,
+				shared.APIResponse{
+					Success: false,
+					Message: "Invalid authorization header",
+				},
+			)
+
 			return
 		}
 
@@ -48,19 +71,33 @@ func AuthMiddleware(next http.Handler) http.Handler {
 			tokenString,
 			claims,
 			func(token *jwt.Token) (interface{}, error) {
+
+				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+					return nil, jwt.ErrSignatureInvalid
+				}
+
 				return jwtSecret, nil
 			},
 		)
 
 		if err != nil || !token.Valid {
-			http.Error(w, "Invalid token", http.StatusUnauthorized)
+
+			utils.WriteJSON(
+				w,
+				http.StatusUnauthorized,
+				shared.APIResponse{
+					Success: false,
+					Message: "Invalid token",
+				},
+			)
+
 			return
 		}
 
 		ctx := context.WithValue(
 			r.Context(),
 			UserIDKey,
-			claims.UserID,
+			claims.Subject,
 		)
 
 		ctx = context.WithValue(

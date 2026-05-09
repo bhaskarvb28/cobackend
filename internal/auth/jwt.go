@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"os"
 	"time"
 
@@ -8,15 +9,23 @@ import (
 )
 
 func GenerateJWT(userID string, roleID string, role string) (string, error) {
+	secret := os.Getenv("JWT_SECRET")
+
+	if secret == "" {
+		return "", errors.New("JWT_SECRET is not configured")
+	}
+
+	now := time.Now()
+
 	claims := Claims{
-		UserID: userID,
-		RoleID: roleID,
+		RoleID:   roleID,
 		RoleName: role,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(
-				time.Now().Add(24 * time.Hour),
-			),
-			IssuedAt: jwt.NewNumericDate(time.Now()),
+			Subject:   userID,
+			Issuer:    "cobackend",
+			IssuedAt:  jwt.NewNumericDate(now),
+			NotBefore: jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(24 * time.Hour)),
 		},
 	}
 
@@ -24,8 +33,6 @@ func GenerateJWT(userID string, roleID string, role string) (string, error) {
 		jwt.SigningMethodHS256,
 		claims,
 	)
-
-	secret := os.Getenv("JWT_SECRET")
 
 	return token.SignedString([]byte(secret))
 }

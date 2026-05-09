@@ -4,19 +4,12 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-// type RegisterInput struct {
-// 	FirstName     string `json:"first_name"`
-// 	LastName      string `json:"last_name"`
-// 	Email         string `json:"email"`
-// 	Password      string `json:"password"` // plain password
-// 	ContactNumber string `json:"contact_number"`
-// }
-
 type LoginInput struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 }
 
+// Internal auth/database model
 type AuthUser struct {
 	ID       string
 	Email    string
@@ -25,9 +18,23 @@ type AuthUser struct {
 	Role     string
 }
 
+// JWT claims
 type Claims struct {
-	UserID string `json:"sub"`
-	RoleID string `json:"role"`
-	RoleName   string `json:"role_name"`
+	RoleID   string `json:"role"`
+	RoleName string `json:"role_name"`
 	jwt.RegisteredClaims
 }
+
+// Public user response
+type UserResponse struct {
+	ID    string `json:"id"`
+	Email string `json:"email"`
+	Role  string `json:"role"`
+}
+
+// Login API response
+type LoginResponse struct {
+	Token string       `json:"token"`
+	User  UserResponse `json:"user"`
+}
+

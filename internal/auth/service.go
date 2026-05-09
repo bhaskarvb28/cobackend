@@ -1,46 +1,44 @@
 package auth
 
 import (
-	"golang.org/x/crypto/bcrypt"
 	"context"
-
 	"errors"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
-// func Register(ctx context.Context, input RegisterInput) error {
-// 	hashed, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	// Pass to repository
-// 	return CreateUser(ctx, input, string(hashed))
-// }
-
-func Login(ctx context.Context, input LoginInput) (string, error) {
-	// find user by email 
+func Login(ctx context.Context, input LoginInput) (*LoginResponse, error) {
+	// Find user by email
 	user, err := GetUserByEmail(ctx, input.Email)
 	if err != nil {
-		return "", errors.New("Invalid email or password")
+		return nil, errors.New("invalid email or password")
 	}
 
-	// compare passwords
+	// Compare passwords
 	err = bcrypt.CompareHashAndPassword(
 		[]byte(user.Password),
 		[]byte(input.Password),
 	)
 
 	if err != nil {
-		return "", errors.New("invalid email or password")
+		return nil, errors.New("invalid email or password")
 	}
 
-	// generate jwt
+	// Generate JWT
 	token, err := GenerateJWT(user.ID, user.RoleID, user.Role)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return token, nil
+	// Build response
+	response := &LoginResponse{
+		Token: token,
+		User: UserResponse{
+			ID:    user.ID,
+			Email: user.Email,
+			Role:  user.Role,
+		},
+	}
 
-
+	return response, nil
 }

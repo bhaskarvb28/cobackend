@@ -6,3 +6,7 @@ type District struct {
 	DistrictName string `json:"district_name"`
 }
 
+type DistrictResponse struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}

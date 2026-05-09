@@ -1,14 +1,25 @@
 package middleware
 
-import "net/http"
+import (
+	"net/http"
 
-func RequireRole(roles ...string) func (http.Handler) http.Handler {
+	"cobackend/internal/shared"
+	"cobackend/internal/utils"
+)
+
+func RequireRole(roles ...string) func(http.Handler) http.Handler {
+
 	return func(next http.Handler) http.Handler {
+
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+
 			role, ok := r.Context().Value(RoleNameKey).(string)
 
 			if !ok {
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				utils.WriteJSON(w, http.StatusUnauthorized, shared.APIResponse{
+					Success: false,
+					Message: "unauthorized",
+				})
 				return
 			}
 
@@ -20,8 +31,10 @@ func RequireRole(roles ...string) func (http.Handler) http.Handler {
 				}
 			}
 
-			http.Error(w, "Forbidden", http.StatusForbidden)
-
+			utils.WriteJSON(w, http.StatusForbidden, shared.APIResponse{
+				Success: false,
+				Message: "forbidden",
+			})
 		})
 	}
 }

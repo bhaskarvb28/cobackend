@@ -4,8 +4,6 @@ import (
 	"context"
 
 	"cobackend/internal/db"
-		"fmt"
-
 )
 
 func GetDistrictsRepository(ctx context.Context) ([]District, error) {
@@ -19,7 +17,6 @@ func GetDistrictsRepository(ctx context.Context) ([]District, error) {
 	)
 
 	if err != nil {
-		fmt.Println(err)
 		return nil, err
 	}
 
@@ -45,3 +42,50 @@ func GetDistrictsRepository(ctx context.Context) ([]District, error) {
 
 	return districts, nil
 }
+
+func GetDistrictsByStateIDRepository(
+	ctx context.Context,
+	stateID int,
+) ([]DistrictResponse, error) {
+
+	rows, err := db.DB.Query(
+		ctx,
+		`
+		SELECT id, district_name
+		FROM districts
+		WHERE state_id = $1
+		ORDER BY district_name ASC
+		`,
+		stateID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	districts := []DistrictResponse{}
+
+	for rows.Next() {
+		var district DistrictResponse
+
+		err := rows.Scan(
+			&district.ID,
+			&district.Name,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		districts = append(districts, district)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return districts, nil
+}
+

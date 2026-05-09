@@ -4,6 +4,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
+
+	"cobackend/internal/utils"
+	"cobackend/internal/shared"
 )
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -13,34 +16,41 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	decoder.DisallowUnknownFields()
 
 	err := decoder.Decode(&input)
-
 	if err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
+			Success: false,
+			Message: "Invalid request body",
+		})
 		return
 	}
 
-	// Trim whitespace from email
+	// Trim whitespace
 	input.Email = strings.TrimSpace(input.Email)
 	input.Password = strings.TrimSpace(input.Password)
 
-	// optional validation
+	// Validate required fields
 	if input.Email == "" || input.Password == "" {
-		http.Error(w, "email and password are required", http.StatusBadRequest)
+		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
+			Success: false,
+			Message: "Email and password are required",
+		})
 		return
 	}
 
-	// Login should return JWT token
-	token, err := Login(r.Context(), input)
+	// Login service
+	response, err := Login(r.Context(), input)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
+		utils.WriteJSON(w, http.StatusUnauthorized, shared.APIResponse{
+			Success: false,
+			Message: err.Error(),
+		})
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	json.NewEncoder(w).Encode(map[string]string{
-		"message": "Login Successful",
-		"token":   token,
+	// Success response
+	utils.WriteJSON(w, http.StatusOK, shared.APIResponse{
+		Success: true,
+		Message: "Login successful",
+		Data:    response,
 	})
 }
