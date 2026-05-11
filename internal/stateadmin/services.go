@@ -9,7 +9,7 @@ import (
 	// "cobackend/internal/auth"
 	// "cobackend/internal/shared"
 	"cobackend/internal/invitations"
-	"cobackend/internal/mail"
+	// "cobackend/internal/mail"
 	"cobackend/internal/profiles"
 	"cobackend/internal/roles"
 	"cobackend/internal/shared"
