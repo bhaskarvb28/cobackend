@@ -13,13 +13,21 @@ func RequireRole(roles ...string) func(http.Handler) http.Handler {
 
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-			role, ok := r.Context().Value(RoleNameKey).(string)
+			role, ok := r.Context().
+				Value(RoleNameKey).
+				( string)
 
 			if !ok {
-				utils.WriteJSON(w, http.StatusUnauthorized, shared.APIResponse{
-					Success: false,
-					Message: "unauthorized",
-				})
+
+				utils.WriteError(
+					w,
+					shared.NewAPIError(
+						http.StatusUnauthorized,
+						"unauthorized",
+					),
+					"authorization failed",
+				)
+
 				return
 			}
 
@@ -31,10 +39,14 @@ func RequireRole(roles ...string) func(http.Handler) http.Handler {
 				}
 			}
 
-			utils.WriteJSON(w, http.StatusForbidden, shared.APIResponse{
-				Success: false,
-				Message: "forbidden",
-			})
+			utils.WriteError(
+				w,
+				shared.NewAPIError(
+					http.StatusForbidden,
+					"forbidden",
+				),
+				"authorization failed",
+			)
 		})
 	}
 }

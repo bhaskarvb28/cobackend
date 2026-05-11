@@ -9,6 +9,8 @@ import (
 	"cobackend/internal/shared"
 
 	"errors"
+
+	"fmt"
 )
 
 func LoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -106,6 +108,8 @@ func AcceptInviteHandler(
 
 			return
 		}
+
+		fmt.Print(err)
 
 		utils.WriteJSON(
 			w,

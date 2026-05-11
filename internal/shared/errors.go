@@ -53,5 +53,10 @@ var (
 	ErrStateNotFound = errors.New(
 		"state not found",
 	)
+
+	// Profile Related Errors
+	ErrProfileAlreadyExists = errors.New(
+		"profile with this email already exists",
+	)
 )
 

@@ -21,7 +21,7 @@ func ExistsPendingInvitationByEmail(
 			SELECT 1
 			FROM invitations
 			WHERE email = $1
-			AND used = false
+			AND status ILIKE 'pending'
 		)
 		`,
 		email,
@@ -115,7 +115,7 @@ func GetInvitationByToken(
 			role_id,
 			token,
 			assigned_state_id,
-			used,
+			status,
 			expires_at
 		FROM invitations
 		WHERE token = $1
@@ -127,7 +127,7 @@ func GetInvitationByToken(
 		&invitation.RoleID,
 		&invitation.Token,
 		&invitation.AssignedStateID,
-		&invitation.Used,
+		&invitation.Status,
 		&invitation.ExpiresAt,
 	)
 
@@ -148,7 +148,7 @@ func MarkInvitationUsedTx(
 		ctx,
 		`
 		UPDATE invitations
-		SET used = true
+		SET status = 'accepted'
 		WHERE id = $1
 		`,
 		invitationID,

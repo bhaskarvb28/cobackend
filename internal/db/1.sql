@@ -208,7 +208,8 @@ CREATE TABLE invitations (
 
     expires_at TIMESTAMP NOT NULL,
 
-    used BOOLEAN DEFAULT FALSE,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending', 'accepted')),
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 

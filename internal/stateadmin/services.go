@@ -7,9 +7,8 @@ import (
 	// "golang.org/x/crypto/bcrypt"
 
 	// "cobackend/internal/auth"
-	// "cobackend/internal/shared"
 	"cobackend/internal/invitations"
-	// "cobackend/internal/mail"
+	"cobackend/internal/mail"
 	"cobackend/internal/profiles"
 	"cobackend/internal/roles"
 	"cobackend/internal/shared"
@@ -18,14 +17,15 @@ import (
 
 	// "cobackend/internal/utils"
 
-	"errors"
 	"strings"
 
 	"crypto/rand"
 
 	"fmt"
+	"net/http"
 
 	"time"
+	"os"
 	// "net/http"
 )
 
@@ -86,19 +86,31 @@ func InviteStateAdminService(
 	)
 
 	if email == "" {
-		return "", errors.New("email is required")
+		return "", shared.NewAPIError(
+			http.StatusBadRequest,
+			"email is required",
+		)
 	}
 
-	if !validation.IsValidEmail(input.Email) {
-		return "", shared.ErrInvalidEmailFormat
+	if !validation.IsValidEmail(email) {
+		return "", shared.NewAPIError(
+			http.StatusBadRequest,
+			"invalid email format",
+		)
 	}
 
 	if input.AssignedStateID == "" {
-		return "", errors.New("assigned_state_id is required")
+		return "", shared.NewAPIError(
+			http.StatusBadRequest,
+			"assigned_state_id is required",
+		)
 	}
 
 	if !validation.IsValidUUID(input.AssignedStateID) {
-		return "", errors.New("Invalid state ID")
+		return "", shared.NewAPIError(
+			http.StatusBadRequest,
+			"invalid state ID",
+		)
 	}
 
 	stateExists, err := states.CheckStateExists(ctx, input.AssignedStateID)
@@ -108,7 +120,10 @@ func InviteStateAdminService(
 	}
 
 	if !stateExists {
-		return "", errors.New("assigned state does not exist")
+		return "", shared.NewAPIError(
+			http.StatusNotFound,
+			"assigned state does not exist",
+		)
 	}
 
 
@@ -119,7 +134,10 @@ func InviteStateAdminService(
 	}
 
 	if profileExists {
-		return "", errors.New("profile with this email already exists")
+		return "", shared.NewAPIError(
+			http.StatusConflict,
+			"profile with this email already exists",
+		)
 	}
 
 	pendingInviteExists, err := invitations.ExistsPendingInvitationByEmail(ctx, email)
@@ -129,7 +147,10 @@ func InviteStateAdminService(
 	}
 
 	if pendingInviteExists {
-		return "", errors.New("pending invitation already exists for this email")
+		return "", shared.NewAPIError(
+			http.StatusConflict,
+			"pending invitation already exists for this email",
+		)
 	}
 
 	roleID, err := roles.GetRoleIDByName(ctx, "state_admin")
@@ -164,30 +185,34 @@ func InviteStateAdminService(
 		return "", err
 	}
 
+	frontendURL := os.Getenv("FRONTEND_URL")
+
 	inviteLink := fmt.Sprintf(
-		"http://localhost:3000/setup-account?token=%s",
+		"%s/setup-account?token=%s",
+		frontendURL, 
 		token,
 	)
 
-	// Uncomment this after choosing proper email service to send emails
-	// err = mail.SendStateAdminInvitationEmail(
-	// 	email,
-	// 	inviteLink,
-	// )
+	err = mail.SendStateAdminInvitationEmailBrevo(
+		email,
+		inviteLink,
+	)
 
-	// if err != nil {
+	if err != nil {
 
-	// 	deleteErr := invitations.DeleteInvitationByToken(
-	// 		ctx,
-	// 		token,
-	// 	)
+		fmt.Print("Brevo error")
 
-	// 	if deleteErr != nil {
-	// 		return "", deleteErr
-	// 	}
+		deleteErr := invitations.DeleteInvitationByToken(
+			ctx,
+			token,
+		)
 
-	// 	return "", err
-	// }
+		if deleteErr != nil {
+			return "", deleteErr
+		}
+
+		return "", err
+	}
 
 	return inviteLink, nil
 }

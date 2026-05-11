@@ -2,6 +2,7 @@ package stateadmin
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	// "strconv"
@@ -12,9 +13,7 @@ import (
 	"cobackend/internal/utils"
 
 	"cobackend/internal/middleware"
-
-
-	// "errors"
+	"fmt"
 
 )
 
@@ -54,10 +53,34 @@ func InviteStateAdminHandler(w http.ResponseWriter, r *http.Request) {
 
 	inviteLink, err := InviteStateAdminService(r.Context(), input, authUserID)
 	if err != nil {
-		utils.WriteJSON(w, http.StatusInternalServerError, shared.APIResponse{
-			Success: false,
-			Message: "failed to create state admin invite",
-		})
+
+		var apiErr *shared.APIError
+
+		if errors.As(err, &apiErr) {
+
+			utils.WriteJSON(
+				w,
+				apiErr.StatusCode,
+				shared.APIResponse{
+					Success: false,
+					Message: apiErr.Message,
+				},
+			)
+
+			return
+		}
+
+		fmt.Print(err)
+
+		utils.WriteJSON(
+			w,
+			http.StatusInternalServerError,
+			shared.APIResponse{
+				Success: false,
+				Message: "failed to create state admin invite",
+			},
+		)
+
 		return
 	}
 

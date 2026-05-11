@@ -10,6 +10,6 @@ type Invitation struct {
 	RoleID           string
 	Token            string
 	AssignedStateID  string
-	Used             bool
+	Status           string
 	ExpiresAt        time.Time
 }

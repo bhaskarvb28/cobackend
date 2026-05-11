@@ -112,7 +112,7 @@ func AcceptInvitationService(
 		)
 	}
 
-	if invitation.Used {
+	if invitation.Status == "accepted" {
 		return shared.NewAPIError(
 			http.StatusForbidden,
 			"invitation already used",

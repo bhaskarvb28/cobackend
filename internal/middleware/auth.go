@@ -35,13 +35,13 @@ func AuthMiddleware(next http.Handler) http.Handler {
 
 		if authHeader == "" {
 
-			utils.WriteJSON(
+			utils.WriteError(
 				w,
-				http.StatusUnauthorized,
-				shared.APIResponse{
-					Success: false,
-					Message: "Missing authorization header",
-				},
+				shared.NewAPIError(
+					http.StatusUnauthorized,
+					"missing authorization header",
+				),
+				"authentication failed",
 			)
 
 			return
@@ -51,13 +51,13 @@ func AuthMiddleware(next http.Handler) http.Handler {
 
 		if len(splitToken) != 2 || splitToken[0] != "Bearer" {
 
-			utils.WriteJSON(
+			utils.WriteError(
 				w,
-				http.StatusUnauthorized,
-				shared.APIResponse{
-					Success: false,
-					Message: "Invalid authorization header",
-				},
+				shared.NewAPIError(
+					http.StatusUnauthorized,
+					"invalid authorization header",
+				),
+				"authentication failed",
 			)
 
 			return
@@ -82,13 +82,13 @@ func AuthMiddleware(next http.Handler) http.Handler {
 
 		if err != nil || !token.Valid {
 
-			utils.WriteJSON(
+			utils.WriteError(
 				w,
-				http.StatusUnauthorized,
-				shared.APIResponse{
-					Success: false,
-					Message: "Invalid token",
-				},
+				shared.NewAPIError(
+					http.StatusUnauthorized,
+					"invalid token",
+				),
+				"authentication failed",
 			)
 
 			return
