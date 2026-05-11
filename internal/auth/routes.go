@@ -8,5 +8,6 @@ func RegisterRoutes(r chi.Router) {
 
 	r.Route("/auth", func(r chi.Router) {
 		r.Post("/login", LoginHandler)
+		r.Post("/accept-invitation", AcceptInviteHandler)
 	})
 }

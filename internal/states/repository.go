@@ -3,17 +3,54 @@ package states
 import (
 	"cobackend/internal/db"
 	"context"
+	"strings"
+	"fmt"
 )
 
-func GetStatesRepository(ctx context.Context) ([]State, error) {
+func GetStatesRepository(
+	ctx context.Context,
+	queryParams GetStatesQueryParams,
+) ([]State, error) {
+
+	query := `
+		SELECT id, name
+		FROM states
+	`
+
+	args := []interface{}{}
+	argPos := 1
+
+	// Search filter
+	if queryParams.Search != "" {
+		query += fmt.Sprintf(
+			" WHERE name ILIKE $%d",
+			argPos,
+		)
+
+		args = append(
+			args,
+			"%"+queryParams.Search+"%",
+		)
+
+		argPos++
+	}
+
+	// Order validation
+	order := "ASC"
+
+	if strings.ToUpper(queryParams.Order) == "DESC" {
+		order = "DESC"
+	}
+
+	query += fmt.Sprintf(
+		" ORDER BY name %s",
+		order,
+	)
 
 	rows, err := db.DB.Query(
 		ctx,
-		`
-		SELECT id, state_name
-		FROM states
-		ORDER BY state_name ASC
-		`,
+		query,
+		args...,
 	)
 
 	if err != nil {
@@ -22,7 +59,7 @@ func GetStatesRepository(ctx context.Context) ([]State, error) {
 
 	defer rows.Close()
 
-	var states []State
+	states := []State{}
 
 	for rows.Next() {
 		var state State
@@ -39,12 +76,16 @@ func GetStatesRepository(ctx context.Context) ([]State, error) {
 		states = append(states, state)
 	}
 
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
 	return states, nil
 }
 
 func CheckStateExists(
 	ctx context.Context,
-	stateID int,
+	stateID string,
 ) (bool, error) {
 
 	var exists bool

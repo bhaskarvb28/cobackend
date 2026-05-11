@@ -1,7 +1,11 @@
 package states 
 
 type State struct {
-	ID	 int 	`jsont:"id"`
-	Name string `json:"name"`
+	ID	 string 
+	Name string
 }
 
+type GetStatesQueryParams struct {
+	Search string
+	Order   string
+}

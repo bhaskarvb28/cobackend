@@ -5,13 +5,30 @@ import (
 	"regexp"
 
 	"unicode"
+	"strings"
 
 	"github.com/google/uuid"
 )
 
 func IsValidEmail(email string) bool {
+
 	_, err := mail.ParseAddress(email)
-	return err == nil
+
+	if err != nil {
+		return false
+	}
+
+	parts := strings.Split(email, "@")
+
+	if len(parts) != 2 {
+		return false
+	}
+
+	if !strings.Contains(parts[1], ".") {
+		return false
+	}
+
+	return true
 }
 
 func IsValidIndianPhone(phone string) bool {

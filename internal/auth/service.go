@@ -4,28 +4,49 @@ import (
 	"context"
 	"errors"
 
+	"cobackend/internal/invitations"
+	"cobackend/internal/utils"
+	"cobackend/internal/roles"
+	"cobackend/internal/stateadmin"
+	"cobackend/internal/jwt"
+	"cobackend/internal/profiles"
+	"cobackend/internal/shared"
+	"cobackend/internal/validation"
+
+	"github.com/jackc/pgx/v5"
+
+	"net/http"
+
+	"cobackend/internal/db"
+
 	"golang.org/x/crypto/bcrypt"
+
+	"fmt"
+	"time"
+	"strings"
 )
 
 func Login(ctx context.Context, input LoginInput) (*LoginResponse, error) {
 	// Find user by email
 	user, err := GetUserByEmail(ctx, input.Email)
 	if err != nil {
+		fmt.Print(err)
 		return nil, errors.New("invalid email or password")
 	}
 
 	// Compare passwords
 	err = bcrypt.CompareHashAndPassword(
-		[]byte(user.Password),
+		[]byte(user.PasswordHash),
 		[]byte(input.Password),
 	)
 
 	if err != nil {
+		fmt.Print(err)
 		return nil, errors.New("invalid email or password")
 	}
 
 	// Generate JWT
-	token, err := GenerateJWT(user.ID, user.RoleID, user.Role)
+	token, err := jwt.GenerateJWT(user.ID, user.RoleID, user.Role)
 	if err != nil {
 		return nil, err
 	}
@@ -41,4 +62,179 @@ func Login(ctx context.Context, input LoginInput) (*LoginResponse, error) {
 	}
 
 	return response, nil
+}
+
+func AcceptInvitationService(
+	ctx context.Context,
+	input AcceptInvitationInput,
+) error {
+
+	token := strings.TrimSpace(input.Token)
+
+	if token == "" {
+		return shared.NewAPIError(
+			http.StatusBadRequest,
+			"token is required",
+		)
+	}
+
+	if strings.TrimSpace(input.FirstName) == "" {
+		return shared.NewAPIError(
+			http.StatusBadRequest,
+			"first_name is required",
+		)
+	}
+
+	if strings.TrimSpace(input.Password) == "" {
+		return shared.NewAPIError(
+			http.StatusBadRequest,
+			"password is required",
+		)
+	}
+
+	invitation, err := invitations.GetInvitationByToken(
+		ctx,
+		token,
+	)
+
+	if err != nil {
+
+		if errors.Is(err, pgx.ErrNoRows) {
+			return shared.NewAPIError(
+				http.StatusUnauthorized,
+				"invalid invitation token",
+			)
+		}
+
+		return shared.NewAPIError(
+			http.StatusInternalServerError,
+			"failed to fetch invitation",
+		)
+	}
+
+	if invitation.Used {
+		return shared.NewAPIError(
+			http.StatusForbidden,
+			"invitation already used",
+		)
+	}
+
+	if time.Now().After(invitation.ExpiresAt) {
+		return shared.NewAPIError(
+			http.StatusForbidden,
+			"invitation expired",
+		)
+	}
+
+
+	if !validation.IsStrongPassword(input.Password) {
+		return shared.NewAPIError(
+			http.StatusBadRequest,
+			shared.ErrWeakPassword.Error(),
+		)
+	}
+
+	passwordHash, err := utils.HashPassword(
+		input.Password,
+	)
+
+	if err != nil {
+		return shared.NewAPIError(
+			http.StatusInternalServerError,
+			"failed to process password",
+		)
+	}
+
+	if !validation.IsValidIndianPhone(input.ContactNumber) {
+		return shared.NewAPIError(
+			http.StatusBadRequest,
+			shared.ErrInvalidPhoneNumber.Error(),
+		)
+	}
+
+	tx, err := db.DB.Begin(ctx)
+
+	if err != nil {
+		return shared.NewAPIError(
+			http.StatusInternalServerError,
+			"failed to start transaction",
+		)
+	}
+
+	defer tx.Rollback(ctx)
+
+	profileID, err := profiles.CreateProfileTx(
+		ctx,
+		tx,
+		profiles.CreateProfileInput{
+			FirstName:     input.FirstName,
+			LastName:      input.LastName,
+			Email:         invitation.Email,
+			PasswordHash:  passwordHash,
+			ContactNumber: input.ContactNumber,
+			RoleID:        invitation.RoleID,
+		},
+	)
+
+	if err != nil {
+		return shared.NewAPIError(
+			http.StatusInternalServerError,
+			"failed to create profile",
+		)
+	}
+
+	roleName, err := roles.GetRoleNameByID(
+		ctx,
+		invitation.RoleID,
+	)
+
+	if err != nil {
+		return shared.NewAPIError(
+			http.StatusInternalServerError,
+			"failed to fetch role",
+		)
+	}
+
+	switch roleName {
+
+	case "state_admin":
+
+		err = stateadmin.CreateStateAdminTx(
+			ctx,
+			tx,
+			profileID,
+			invitation.AssignedStateID,
+		)
+
+		if err != nil {
+			return shared.NewAPIError(
+				http.StatusInternalServerError,
+				"failed to create state admin",
+			)
+		}
+	}
+
+	err = invitations.MarkInvitationUsedTx(
+		ctx,
+		tx,
+		invitation.ID,
+	)
+
+	if err != nil {
+		return shared.NewAPIError(
+			http.StatusInternalServerError,
+			"failed to update invitation",
+		)
+	}
+
+	err = tx.Commit(ctx)
+
+	if err != nil {
+		return shared.NewAPIError(
+			http.StatusInternalServerError,
+			"failed to commit transaction",
+		)
+	}
+
+	return nil
 }

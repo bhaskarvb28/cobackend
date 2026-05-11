@@ -2,13 +2,13 @@ package districts
 
 import (
 	"net/http"
+	"strings"
 
 	"cobackend/internal/shared"
 	"cobackend/internal/utils"
+	"cobackend/internal/validation"
 
 	"github.com/go-chi/chi/v5"
-
-	"strconv"
 )
 
 func GetDistrictsHandler(w http.ResponseWriter, r *http.Request) {
@@ -29,9 +29,16 @@ func GetDistrictsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetDistrictsByStateIdHandler(w http.ResponseWriter, r *http.Request) {
-	stateIDParam := chi.URLParam(r, "state_id")
+	stateID := chi.URLParam(r, "state_id")
 
-	if stateIDParam == "" {
+	search := strings.TrimSpace(
+		r.URL.Query().Get("search"),
+	)
+	order := strings.TrimSpace(
+		r.URL.Query().Get("order"),
+	)
+
+	if stateID == "" {
 		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
 			Success: false,
 			Message: "State ID is required",
@@ -39,8 +46,7 @@ func GetDistrictsByStateIdHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	stateID, err := strconv.Atoi(stateIDParam)
-	if err != nil {
+	if !validation.IsValidUUID(stateID) {
 		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
 			Success: false,
 			Message: "Invalid state ID",
@@ -48,9 +54,15 @@ func GetDistrictsByStateIdHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	queryParams := GetDistrictQueryParams {
+		Search: search,
+		Order: order,
+	}
+
 	districts, err := GetDistrictsByStateIdService(
 		r.Context(),
 		stateID,
+		queryParams,
 	)
 
 	if err != nil {

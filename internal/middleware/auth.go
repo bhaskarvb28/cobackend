@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"cobackend/internal/auth"
+	jwtClaims "cobackend/internal/jwt"
 	"cobackend/internal/shared"
 	"cobackend/internal/utils"
 
@@ -65,7 +65,7 @@ func AuthMiddleware(next http.Handler) http.Handler {
 
 		tokenString := splitToken[1]
 
-		claims := &auth.Claims{}
+		claims := &jwtClaims.Claims{}
 
 		token, err := jwt.ParseWithClaims(
 			tokenString,

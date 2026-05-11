@@ -4,15 +4,19 @@ import (
 	"context"
 
 	"cobackend/internal/db"
+
+	"fmt"
+
+	"strings"
 )
 
 func GetDistrictsRepository(ctx context.Context) ([]District, error) {
 	rows, err := db.DB.Query(
 		ctx,
 		`
-		SELECT id, state_id, district_name
+		SELECT id, state_id, name
 		FROM districts
-		ORDER BY district_name ASC
+		ORDER BY name ASC
 		`,
 	)
 
@@ -45,18 +49,50 @@ func GetDistrictsRepository(ctx context.Context) ([]District, error) {
 
 func GetDistrictsByStateIDRepository(
 	ctx context.Context,
-	stateID int,
+	stateID string,
+	queryParams GetDistrictQueryParams,
 ) ([]DistrictResponse, error) {
+
+	query := `
+		SELECT id, name
+		FROM districts
+		WHERE state_id = $1
+	`
+
+	args := []interface{}{stateID}
+	argPos := 2
+
+	// Search filter
+	if queryParams.Search != "" {
+		query += fmt.Sprintf(
+			" AND name ILIKE $%d",
+			argPos,
+		)
+
+		args = append(
+			args,
+			"%"+queryParams.Search+"%",
+		)
+
+		argPos++
+	}
+
+	// Order validation
+	order := "ASC"
+
+	if strings.ToUpper(queryParams.Order) == "DESC" {
+		order = "DESC"
+	}
+
+	query += fmt.Sprintf(
+		" ORDER BY name %s",
+		order,
+	)
 
 	rows, err := db.DB.Query(
 		ctx,
-		`
-		SELECT id, district_name
-		FROM districts
-		WHERE state_id = $1
-		ORDER BY district_name ASC
-		`,
-		stateID,
+		query,
+		args...,
 	)
 
 	if err != nil {
@@ -88,4 +124,3 @@ func GetDistrictsByStateIDRepository(
 
 	return districts, nil
 }
-

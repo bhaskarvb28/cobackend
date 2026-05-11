@@ -18,13 +18,13 @@ func RegisterRoutes(r chi.Router) {
 				middleware.RequireRole("super_admin"),
 			)
 
-			r.Post("/", CreateStateAdminHandler)
+			r.Post("/invite", InviteStateAdminHandler)
 
-			// Get State Admin Routes
-			r.Get("/", GetStateAdminsHandler)
+			// // Get State Admin Routes
+			// r.Get("/", GetStateAdminsHandler)
 			
-			r.Put("/{id}/assigned-state", UpdateAssignedStateHandler)
-			r.Delete("/{id}", DeleteStateAdminHandler)
+			// r.Put("/{id}/assigned-state", UpdateAssignedStateHandler)
+			// r.Delete("/{id}", DeleteStateAdminHandler)
 		})
 	})
 }

@@ -15,18 +15,18 @@ func GetUserByEmail(ctx context.Context, email string) (AuthUser, error) {
 		SELECT 
 			p.id,
 			p.email,
-			p.password,
+			p.password_hash,
 			p.role_id,
-			r.role_name
+			r.name
 		FROM profiles p
-		JOIN roles r ON p.role_id = r.role_id
+		JOIN roles r ON p.role_id = r.id
 		WHERE p.email = $1
 		`,
 		email,
 	).Scan(
 		&user.ID,
 		&user.Email,
-		&user.Password,
+		&user.PasswordHash,
 		&user.RoleID,
 		&user.Role,
 	)
@@ -38,28 +38,3 @@ func GetUserByEmail(ctx context.Context, email string) (AuthUser, error) {
 	return user, nil
 }
 
-func CheckEmailExists(
-	ctx context.Context,
-	email string,
-) (bool, error) {
-
-	var exists bool
-
-	err := db.DB.QueryRow(
-		ctx,
-		`
-		SELECT EXISTS (
-			SELECT 1
-			FROM profiles
-			WHERE email = $1
-		)
-		`,
-		email,
-	).Scan(&exists)
-
-	if err != nil {
-		return false, err
-	}
-
-	return exists, nil
-}

@@ -4,25 +4,27 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"strconv"
+	// "strconv"
 
-	"github.com/go-chi/chi/v5"
+	// "github.com/go-chi/chi/v5"
 
 	"cobackend/internal/shared"
 	"cobackend/internal/utils"
 
-	"cobackend/internal/validation"
+	"cobackend/internal/middleware"
 
-	"strings"
 
-	"errors"
+	// "errors"
+
 )
 
-func CreateStateAdminHandler(w http.ResponseWriter, r *http.Request) {
-	var input CreateStateAdminInput
+func InviteStateAdminHandler(w http.ResponseWriter, r *http.Request) {
+	var input InviteStateAdminInput
 
 	decoder := json.NewDecoder(r.Body)
 	decoder.DisallowUnknownFields()
+
+	defer r.Body.Close()
 
 	err := decoder.Decode(&input)
 	if err != nil {
@@ -33,266 +35,315 @@ func CreateStateAdminHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// trim whitespace
-	input.FirstName = strings.TrimSpace(input.FirstName)
-	input.LastName = strings.TrimSpace(input.LastName)
-	input.Email = strings.TrimSpace(input.Email)
-	input.ContactNumber = strings.TrimSpace(input.ContactNumber)
 
-	// basic request validation
-	if input.FirstName == "" ||
-		input.LastName == "" ||
-		input.Email == "" ||
-		input.Password == "" ||
-		input.ContactNumber == "" ||
-		input.AssignedState <= 0 {
+	authUserID, ok := r.Context().
+		Value(middleware.UserIDKey).
+		(string)
 
-		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
-			Success: false,
-			Message: "all fields are required",
-		})
+	if !ok {
+		utils.WriteJSON(
+			w,
+			http.StatusUnauthorized,
+			shared.APIResponse{
+				Success: false,
+				Message: "unauthorized",
+			},
+		)
 		return
 	}
 
-	// validate email format
-	if !validation.IsValidEmail(input.Email) {
-		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
-			Success: false,
-			Message: shared.ErrInvalidEmailFormat.Error(),
-		})
-		return
-	}
-
-	// validate phone number
-	if !validation.IsValidIndianPhone(input.ContactNumber) {
-		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
-			Success: false,
-			Message: shared.ErrInvalidPhoneNumber.Error(),
-		})
-		return
-	}
-
-	// validate password strength
-	if !validation.IsStrongPassword(input.Password) {
-		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
-			Success: false,
-			Message: shared.ErrWeakPassword.Error(),
-		})
-		return
-	}
-
-	err = CreateStateAdminService(r.Context(), input)
+	inviteLink, err := InviteStateAdminService(r.Context(), input, authUserID)
 	if err != nil {
-		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
+		utils.WriteJSON(w, http.StatusInternalServerError, shared.APIResponse{
 			Success: false,
-			Message: err.Error(),
+			Message: "failed to create state admin invite",
 		})
 		return
 	}
 
 	utils.WriteJSON(w, http.StatusCreated, shared.APIResponse{
 		Success: true,
-		Message: "state admin created successfully",
+		Message: "state admin invitation created successfully",
+		Data: inviteLink,
 	})
 }
 
-func GetStateAdminsHandler(w http.ResponseWriter, r *http.Request) {
+// func CreateStateAdminHandler(w http.ResponseWriter, r *http.Request) {
+// 	var input CreateStateAdminInput
 
-	pageStr := r.URL.Query().Get("page")
-	limitStr := r.URL.Query().Get("limit")
-	search := strings.TrimSpace(
-		r.URL.Query().Get("search"),
-	)
-	stateStr := r.URL.Query().Get("assigned_state")
+// 	decoder := json.NewDecoder(r.Body)
+// 	decoder.DisallowUnknownFields()
 
-	// default values
-	page := 1
-	limit := 10
-	state := 0
+// 	err := decoder.Decode(&input)
+// 	if err != nil {
+// 		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
+// 			Success: false,
+// 			Message: "invalid request body",
+// 		})
+// 		return
+// 	}
 
-	// parse page
-	if pageStr != "" {
+// 	// trim whitespace
+// 	input.FirstName = strings.TrimSpace(input.FirstName)
+// 	input.LastName = strings.TrimSpace(input.LastName)
+// 	input.Email = strings.TrimSpace(input.Email)
+// 	input.ContactNumber = strings.TrimSpace(input.ContactNumber)
 
-		parsedPage, err := strconv.Atoi(pageStr)
-		if err != nil || parsedPage < 1 {
-			utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
-				Success: false,
-				Message: "invalid page parameter",
-			})
-			return
-		}
+// 	// basic request validation
+// 	if input.FirstName == "" ||
+// 		input.LastName == "" ||
+// 		input.Email == "" ||
+// 		input.Password == "" ||
+// 		input.ContactNumber == "" ||
+// 		input.AssignedState == "" {
 
-		page = parsedPage
-	}
+// 		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
+// 			Success: false,
+// 			Message: "all fields are required",
+// 		})
+// 		return
+// 	}
 
-	// parse limit
-	if limitStr != "" {
+// 	// validate email format
+// 	if !validation.IsValidEmail(input.Email) {
+// 		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
+// 			Success: false,
+// 			Message: shared.ErrInvalidEmailFormat.Error(),
+// 		})
+// 		return
+// 	}
 
-		parsedLimit, err := strconv.Atoi(limitStr)
-		if err != nil || parsedLimit < 1 {
-			utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
-				Success: false,
-				Message: "invalid limit parameter",
-			})
-			return
-		}
+// 	// validate phone number
+// 	if !validation.IsValidIndianPhone(input.ContactNumber) {
+// 		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
+// 			Success: false,
+// 			Message: shared.ErrInvalidPhoneNumber.Error(),
+// 		})
+// 		return
+// 	}
 
-		limit = parsedLimit
-	}
+// 	// validate password strength
+// 	if !validation.IsStrongPassword(input.Password) {
+// 		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
+// 			Success: false,
+// 			Message: shared.ErrWeakPassword.Error(),
+// 		})
+// 		return
+// 	}
 
-	// parse assigned_state
-	if stateStr != "" {
+// 	err = CreateStateAdminService(r.Context(), input)
+// 	if err != nil {
+// 		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
+// 			Success: false,
+// 			Message: err.Error(),
+// 		})
+// 		return
+// 	}
 
-		parsedState, err := strconv.Atoi(stateStr)
-		if err != nil || parsedState < 1 {
-			utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
-				Success: false,
-				Message: "invalid assigned_state parameter",
-			})
-			return
-		}
+// 	utils.WriteJSON(w, http.StatusCreated, shared.APIResponse{
+// 		Success: true,
+// 		Message: "state admin created successfully",
+// 	})
+// }
 
-		state = parsedState
-	}
 
-	query := GetStateAdminsQuery{
-		Page:   page,
-		Limit:  limit,
-		Search: search,
-		AssignedState:  state,
-	}
+// func GetStateAdminsHandler(w http.ResponseWriter, r *http.Request) {
 
-	stateAdmins, err := GetStateAdminsService(
-		r.Context(),
-		query,
-	)
+// 	pageStr := r.URL.Query().Get("page")
+// 	limitStr := r.URL.Query().Get("limit")
+// 	search := strings.TrimSpace(
+// 		r.URL.Query().Get("search"),
+// 	)
+// 	// stateStr := r.URL.Query().Get("assigned_state")
 
-	if err != nil {
-		utils.WriteJSON(w, http.StatusInternalServerError, shared.APIResponse{
-			Success: false,
-			Message: "failed to fetch state admins",
-		})
-		return
-	}
+// 	// default values
+// 	page := 1
+// 	limit := 10
+// 	state := 0
 
-	utils.WriteJSON(w, http.StatusOK, shared.APIResponse{
-		Success: true,
-		Message: "state admins fetched successfully",
-		Data:    stateAdmins,
-	})
-}
+// 	// parse page
+// 	if pageStr != "" {
 
-func UpdateAssignedStateHandler(
-	w http.ResponseWriter,
-	r *http.Request,
-) {
+// 		parsedPage, err := strconv.Atoi(pageStr)
+// 		if err != nil || parsedPage < 1 {
+// 			utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
+// 				Success: false,
+// 				Message: "invalid page parameter",
+// 			})
+// 			return
+// 		}
 
-	id := chi.URLParam(r, "id")
+// 		page = parsedPage
+// 	}
 
-	if id == "" {
-		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
-			Success: false,
-			Message: "state admin id is required",
-		})
-		return
-	}
+// 	// parse limit
+// 	if limitStr != "" {
 
-	if !validation.IsValidUUID(id) {
-		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
-			Success: false,
-			Message: "invalid state admin id",
-		})
-		return
-	}
+// 		parsedLimit, err := strconv.Atoi(limitStr)
+// 		if err != nil || parsedLimit < 1 {
+// 			utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
+// 				Success: false,
+// 				Message: "invalid limit parameter",
+// 			})
+// 			return
+// 		}
 
-	var input UpdateAssignedStateInput
+// 		limit = parsedLimit
+// 	}
 
-	decoder := json.NewDecoder(r.Body)
-	decoder.DisallowUnknownFields()
+// 	// parse assigned_state
+// 	// if stateStr != "" {
 
-	err := decoder.Decode(&input)
-	if err != nil {
-		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
-			Success: false,
-			Message: "invalid request body",
-		})
-		return
-	}
+// 	// 	parsedState, err := strconv.Atoi(stateStr)
+// 	// 	if err != nil || parsedState < 1 {
+// 	// 		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
+// 	// 			Success: false,
+// 	// 			Message: "invalid assigned_state parameter",
+// 	// 		})
+// 	// 		return
+// 	// 	}
 
-	// validate assigned state
-	if input.AssignedState == 0 {
-		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
-			Success: false,
-			Message: "assigned state is required",
-		})
-		return
-	}
+// 	// 	state = parsedState
+// 	// }
 
-	err = UpdateAssignedStateService(
-		r.Context(),
-		id,
-		input,
-	)
+// 	query := GetStateAdminsQuery{
+// 		Page:   page,
+// 		Limit:  limit,
+// 		Search: search,
+// 		AssignedState:  state,
+// 	}
 
-	if err != nil {
-		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
-			Success: false,
-			Message: err.Error(),
-		})
-		return
-	}
+// 	stateAdmins, err := GetStateAdminsService(
+// 		r.Context(),
+// 		query,
+// 	)
 
-	utils.WriteJSON(w, http.StatusOK, shared.APIResponse{
-		Success: true,
-		Message: "assigned state updated successfully",
-	})
-}
+// 	if err != nil {
+// 		utils.WriteJSON(w, http.StatusInternalServerError, shared.APIResponse{
+// 			Success: false,
+// 			Message: "failed to fetch state admins",
+// 		})
+// 		return
+// 	}
 
-func DeleteStateAdminHandler(
-	w http.ResponseWriter,
-	r *http.Request,
-) {
+// 	utils.WriteJSON(w, http.StatusOK, shared.APIResponse{
+// 		Success: true,
+// 		Message: "state admins fetched successfully",
+// 		Data:    stateAdmins,
+// 	})
+// }
 
-	id := chi.URLParam(r, "id")
+// func UpdateAssignedStateHandler(
+// 	w http.ResponseWriter,
+// 	r *http.Request,
+// ) {
 
-	if id == "" {
-		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
-			Success: false,
-			Message: "state admin id is required",
-		})
-		return
-	}
+// 	id := chi.URLParam(r, "id")
 
-	if !validation.IsValidUUID(id) {
-		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
-			Success: false,
-			Message: shared.ErrInvalidUUID.Error(),
-		})
-		return
-	}
+// 	if id == "" {
+// 		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
+// 			Success: false,
+// 			Message: "state admin id is required",
+// 		})
+// 		return
+// 	}
 
-	err := DeleteStateAdminService(
-		r.Context(),
-		id,
-	)
+// 	if !validation.IsValidUUID(id) {
+// 		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
+// 			Success: false,
+// 			Message: "invalid state admin id",
+// 		})
+// 		return
+// 	}
 
-	if err != nil {
+// 	var input UpdateAssignedStateInput
 
-		statusCode := http.StatusBadRequest
+// 	decoder := json.NewDecoder(r.Body)
+// 	decoder.DisallowUnknownFields()
 
-		if errors.Is(err, shared.ErrStateAdminNotFound) {
-			statusCode = http.StatusNotFound
-		}
+// 	err := decoder.Decode(&input)
+// 	if err != nil {
+// 		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
+// 			Success: false,
+// 			Message: "invalid request body",
+// 		})
+// 		return
+// 	}
 
-		utils.WriteJSON(w, statusCode, shared.APIResponse{
-			Success: false,
-			Message: err.Error(),
-		})
-		return
-	}
+// 	// validate assigned state
+// 	if input.AssignedState == 0 {
+// 		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
+// 			Success: false,
+// 			Message: "assigned state is required",
+// 		})
+// 		return
+// 	}
 
-	utils.WriteJSON(w, http.StatusOK, shared.APIResponse{
-		Success: true,
-		Message: "state admin deleted successfully",
-	})
-}
+// 	err = UpdateAssignedStateService(
+// 		r.Context(),
+// 		id,
+// 		input,
+// 	)
+
+// 	if err != nil {
+// 		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
+// 			Success: false,
+// 			Message: err.Error(),
+// 		})
+// 		return
+// 	}
+
+// 	utils.WriteJSON(w, http.StatusOK, shared.APIResponse{
+// 		Success: true,
+// 		Message: "assigned state updated successfully",
+// 	})
+// }
+
+// func DeleteStateAdminHandler(
+// 	w http.ResponseWriter,
+// 	r *http.Request,
+// ) {
+
+// 	id := chi.URLParam(r, "id")
+
+// 	if id == "" {
+// 		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
+// 			Success: false,
+// 			Message: "state admin id is required",
+// 		})
+// 		return
+// 	}
+
+// 	if !validation.IsValidUUID(id) {
+// 		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
+// 			Success: false,
+// 			Message: shared.ErrInvalidUUID.Error(),
+// 		})
+// 		return
+// 	}
+
+// 	err := DeleteStateAdminService(
+// 		r.Context(),
+// 		id,
+// 	)
+
+// 	if err != nil {
+
+// 		statusCode := http.StatusBadRequest
+
+// 		if errors.Is(err, shared.ErrStateAdminNotFound) {
+// 			statusCode = http.StatusNotFound
+// 		}
+
+// 		utils.WriteJSON(w, statusCode, shared.APIResponse{
+// 			Success: false,
+// 			Message: err.Error(),
+// 		})
+// 		return
+// 	}
+
+// 	utils.WriteJSON(w, http.StatusOK, shared.APIResponse{
+// 		Success: true,
+// 		Message: "state admin deleted successfully",
+// 	})
+// }
