@@ -14,14 +14,15 @@ func RegisterRoutes(r chi.Router) {
 
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequireRole(
-				"super_admin",
 				"state_admin",
 			))
 
-			r.Post("/", CreateDistrictAdminHandler)
-			r.Get("/", GetDistrictAdminsHandler)
-			r.Put("/{id}", UpdateDistrictAdminHandler)
-			r.Delete("/{id}", DeleteDistrictAdminHandler)
+			r.Post("/invite", InviteDistrictAdminHandler)
+
+			// r.Post("/", CreateDistrictAdminHandler)
+			// r.Get("/", GetDistrictAdminsHandler)
+			// r.Put("/{id}", UpdateDistrictAdminHandler)
+			// r.Delete("/{id}", DeleteDistrictAdminHandler)
 		})
 	})
 }

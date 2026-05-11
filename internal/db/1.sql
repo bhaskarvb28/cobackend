@@ -190,6 +190,26 @@ CREATE TABLE state_admins (
 );
 
 --------------------------------------------------------------------------------------------------------------
+-- Academies
+--------------------------------------------------------------------------------------------------------------
+create table academies (
+	id Serial primary key,
+	
+    name varchar(50),
+	district_id UUID NOT NULL,
+	address TEXT not null,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_district
+        FOREIGN KEY (district_id)
+        REFERENCES districts(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE
+);
+
+--------------------------------------------------------------------------------------------------------------
 -- Invitations
 --------------------------------------------------------------------------------------------------------------
 
@@ -205,6 +225,8 @@ CREATE TABLE invitations (
     token TEXT NOT NULL UNIQUE,
 
     assigned_state_id UUID,
+    assigned_district_id UUID,
+    assigned_academy_id INT,
 
     expires_at TIMESTAMP NOT NULL,
 
@@ -226,5 +248,15 @@ CREATE TABLE invitations (
     CONSTRAINT fk_assigned_state
         FOREIGN KEY (assigned_state_id)
         REFERENCES states(id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_assigned_district
+        FOREIGN KEY (assigned_district_id)
+        REFERENCES districts(id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_assigned_academy
+        FOREIGN KEY (assigned_academy_id)
+        REFERENCES academies(id)
         ON DELETE RESTRICT
 );

@@ -34,7 +34,6 @@ func InviteStateAdminHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-
 	authUserID, ok := r.Context().
 		Value(middleware.UserIDKey).
 		(string)

@@ -124,3 +124,53 @@ func GetDistrictsByStateIDRepository(
 
 	return districts, nil
 }
+
+func CheckDistrictExists(
+	ctx context.Context,
+	districtID string,
+) (bool, error) {
+
+	var exists bool
+
+	err := db.DB.QueryRow(
+		ctx,
+		`
+		SELECT EXISTS (
+			SELECT 1
+			FROM districts
+			WHERE id = $1
+		)
+		`,
+		districtID,
+	).Scan(&exists)
+
+	if err != nil {
+		return false, err
+	}
+
+	return exists, nil
+}
+
+func GetStateIDByDistrictID(
+	ctx context.Context,
+	districtID string,
+) (string, error) {
+
+	var stateID string
+
+	err := db.DB.QueryRow(
+		ctx,
+		`
+		SELECT state_id
+		FROM districts
+		WHERE id = $1
+		`,
+		districtID,
+	).Scan(&stateID)
+
+	if err != nil {
+		return "", err
+	}
+
+	return stateID, nil
+}

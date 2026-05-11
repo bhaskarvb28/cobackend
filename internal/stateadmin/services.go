@@ -85,6 +85,8 @@ func InviteStateAdminService(
 		strings.TrimSpace(input.Email),
 	)
 
+	assignedStateID := strings.TrimSpace(input.AssignedStateID)
+
 	if email == "" {
 		return "", shared.NewAPIError(
 			http.StatusBadRequest,
@@ -99,21 +101,21 @@ func InviteStateAdminService(
 		)
 	}
 
-	if input.AssignedStateID == "" {
+	if assignedStateID == "" {
 		return "", shared.NewAPIError(
 			http.StatusBadRequest,
 			"assigned_state_id is required",
 		)
 	}
 
-	if !validation.IsValidUUID(input.AssignedStateID) {
+	if !validation.IsValidUUID(assignedStateID) {
 		return "", shared.NewAPIError(
 			http.StatusBadRequest,
 			"invalid state ID",
 		)
 	}
 
-	stateExists, err := states.CheckStateExists(ctx, input.AssignedStateID)
+	stateExists, err := states.CheckStateExists(ctx, assignedStateID)
 
 	if err != nil {
 		return "", err
@@ -177,7 +179,9 @@ func InviteStateAdminService(
 		roleID,
 		authUserID,
 		token,
-		input.AssignedStateID,
+		&assignedStateID,
+		nil,
+		nil,
 		expiresAt,
 	)
 

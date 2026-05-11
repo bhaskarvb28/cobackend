@@ -40,7 +40,9 @@ func CreateInvitationRepository(
 	roleID string,
 	invitedBy string,
 	token string,
-	assignedStateID string,
+	assignedStateID *string,
+	assignedDistrictID *string,
+	assignedAcademyID *string,
 	expiresAt time.Time,
 ) error {
 
@@ -53,6 +55,8 @@ func CreateInvitationRepository(
 			invited_by,
 			token,
 			assigned_state_id,
+			assigned_district_id,
+			assigned_academy_id,
 			expires_at
 		)
 		VALUES (
@@ -61,7 +65,9 @@ func CreateInvitationRepository(
 			$3,
 			$4,
 			$5,
-			$6
+			$6,
+			$7,
+			$8
 		)
 		`,
 		email,
@@ -69,6 +75,8 @@ func CreateInvitationRepository(
 		invitedBy,
 		token,
 		assignedStateID,
+		assignedDistrictID,
+		assignedAcademyID,
 		expiresAt,
 	)
 
