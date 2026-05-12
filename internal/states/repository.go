@@ -85,7 +85,7 @@ func GetStatesRepository(
 
 func CheckStateExists(
 	ctx context.Context,
-	stateID string,
+	stateID int,
 ) (bool, error) {
 
 	var exists bool

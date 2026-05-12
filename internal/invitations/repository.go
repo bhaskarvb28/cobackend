@@ -4,6 +4,7 @@ import (
 	"cobackend/internal/db"
 	"context"
 	"time"
+
 	"github.com/jackc/pgx/v5"
 )
 
@@ -40,9 +41,9 @@ func CreateInvitationRepository(
 	roleID string,
 	invitedBy string,
 	token string,
-	assignedStateID *string,
-	assignedDistrictID *string,
-	assignedAcademyID *string,
+	StateID *int,
+	DistrictID *int,
+	AcademyID *int,
 	expiresAt time.Time,
 ) error {
 
@@ -54,9 +55,9 @@ func CreateInvitationRepository(
 			role_id,
 			invited_by,
 			token,
-			assigned_state_id,
-			assigned_district_id,
-			assigned_academy_id,
+			state_id,
+			district_id,
+			academy_id,
 			expires_at
 		)
 		VALUES (
@@ -74,9 +75,9 @@ func CreateInvitationRepository(
 		roleID,
 		invitedBy,
 		token,
-		assignedStateID,
-		assignedDistrictID,
-		assignedAcademyID,
+		StateID,
+		DistrictID,
+		AcademyID,
 		expiresAt,
 	)
 
@@ -118,23 +119,31 @@ func GetInvitationByToken(
 		ctx,
 		`
 		SELECT
-			id,
-			email,
-			role_id,
-			token,
-			assigned_state_id,
-			status,
-			expires_at
-		FROM invitations
-		WHERE token = $1
+			i.id,
+			i.email,
+			i.role_id,
+			r.name,
+			i.token,
+			i.state_id,
+			i.district_id,
+			i.academy_id,
+			i.status,
+			i.expires_at
+		FROM invitations i
+		JOIN roles r
+			ON r.id = i.role_id
+		WHERE i.token = $1
 		`,
 		token,
 	).Scan(
 		&invitation.ID,
 		&invitation.Email,
 		&invitation.RoleID,
+		&invitation.RoleName,
 		&invitation.Token,
-		&invitation.AssignedStateID,
+		&invitation.StateID,
+		&invitation.DistrictID,
+		&invitation.AcademyID,
 		&invitation.Status,
 		&invitation.ExpiresAt,
 	)

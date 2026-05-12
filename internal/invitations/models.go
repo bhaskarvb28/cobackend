@@ -5,11 +5,18 @@ import (
 )
 
 type Invitation struct {
-	ID               string
-	Email            string
-	RoleID           string
-	Token            string
-	AssignedStateID  string
-	Status           string
-	ExpiresAt        time.Time
+	ID    string
+	Email string
+
+	RoleID   string
+	RoleName string
+
+	Token  string
+	Status string
+
+	StateID    *string
+	DistrictID *string
+	AcademyID  *string
+
+	ExpiresAt time.Time
 }

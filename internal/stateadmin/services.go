@@ -85,8 +85,6 @@ func InviteStateAdminService(
 		strings.TrimSpace(input.Email),
 	)
 
-	assignedStateID := strings.TrimSpace(input.AssignedStateID)
-
 	if email == "" {
 		return "", shared.NewAPIError(
 			http.StatusBadRequest,
@@ -101,21 +99,7 @@ func InviteStateAdminService(
 		)
 	}
 
-	if assignedStateID == "" {
-		return "", shared.NewAPIError(
-			http.StatusBadRequest,
-			"assigned_state_id is required",
-		)
-	}
-
-	if !validation.IsValidUUID(assignedStateID) {
-		return "", shared.NewAPIError(
-			http.StatusBadRequest,
-			"invalid state ID",
-		)
-	}
-
-	stateExists, err := states.CheckStateExists(ctx, assignedStateID)
+	stateExists, err := states.CheckStateExists(ctx, input.StateID)
 
 	if err != nil {
 		return "", err
@@ -179,7 +163,7 @@ func InviteStateAdminService(
 		roleID,
 		authUserID,
 		token,
-		&assignedStateID,
+		&input.StateID,
 		nil,
 		nil,
 		expiresAt,
@@ -226,69 +210,69 @@ func InviteStateAdminService(
 // }
 
 
-// func UpdateAssignedStateService(
-// 	ctx context.Context,
-// 	id string,
-// 	input UpdateAssignedStateInput,
-// ) error {
+func UpdateStateService(
+	ctx context.Context,
+	profileID string,
+	input UpdateStateInput,
+) error {
 
-// 	// check state admin exists
-// 	exists, err := CheckStateAdminExists(
-// 		ctx,
-// 		id,
-// 	)
+	// check state admin exists
+	exists, err := CheckStateAdminExists(
+		ctx,
+		profileID,
+	)
 
-// 	if err != nil {
-// 		return err
-// 	}
+	if err != nil {
+		return err
+	}
 
-// 	if !exists {
-// 		return shared.ErrStateAdminNotFound
-// 	}
+	if !exists {
+		return shared.ErrStateAdminNotFound
+	}
 
-// 	// validate state exists
-// 	stateExists, err := states.CheckStateExists(
-// 		ctx,
-// 		input.AssignedState,
-// 	)
+	// validate state exists
+	stateExists, err := states.CheckStateExists(
+		ctx,
+		input.State,
+	)
 
-// 	if err != nil {
-// 		return err
-// 	}
+	if err != nil {
+		return err
+	}
 
-// 	if !stateExists {
-// 		return shared.ErrInvalidState
-// 	}
+	if !stateExists {
+		return shared.ErrInvalidState
+	}
 
-// 	return UpdateAssignedStateRepository(
-// 		ctx,
-// 		id,
-// 		input,
-// 	)
-// }
+	return UpdateAssignedStateRepository(
+		ctx,
+		profileID,
+		input,
+	)
+}
 
 
-// func DeleteStateAdminService(
-// 	ctx context.Context,
-// 	id string,
-// ) error {
+func DeleteStateAdminService(
+	ctx context.Context,
+	profileID string,
+) error {
 
-// 	// check state admin exists
-// 	exists, err := CheckStateAdminExists(
-// 		ctx,
-// 		id,
-// 	)
+	// check state admin exists
+	exists, err := CheckStateAdminExists(
+		ctx,
+		profileID,
+	)
 
-// 	if err != nil {
-// 		return err
-// 	}
+	if err != nil {
+		return err
+	}
 
-// 	if !exists {
-// 		return shared.ErrStateAdminNotFound
-// 	}
+	if !exists {
+		return shared.ErrStateAdminNotFound
+	}
 
-// 	return DeleteStateAdminRepository(
-// 		ctx,
-// 		id,
-// 	)
-// }
+	return DeleteStateAdminRepository(
+		ctx,
+		profileID,
+	)
+}

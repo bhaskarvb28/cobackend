@@ -34,5 +34,11 @@ type AcceptInvitationInput struct {
 	Password      string `json:"password"`
 	ContactNumber string `json:"contact_number"`
 
-	// You can use `json:"specialization,omitempty"` for other role specific fields
+	DPDPConsent bool `json:"dpdp_consent,omitempty"`
+
+	// Specialization string `json:"specialization,omitempty"`
+
+	// DateOfBirth string `json:"date_of_birth,omitempty"`
+
+	// Gender string `json:"gender,omitempty"`
 }

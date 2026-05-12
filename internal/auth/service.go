@@ -5,13 +5,14 @@ import (
 	"errors"
 
 	"cobackend/internal/invitations"
-	"cobackend/internal/utils"
-	"cobackend/internal/roles"
-	"cobackend/internal/stateadmin"
 	"cobackend/internal/jwt"
 	"cobackend/internal/profiles"
+	"cobackend/internal/roles"
 	"cobackend/internal/shared"
+	"cobackend/internal/stateadmin"
+	"cobackend/internal/utils"
 	"cobackend/internal/validation"
+	"cobackend/internal/districtadmin"
 
 	"github.com/jackc/pgx/v5"
 
@@ -22,8 +23,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"fmt"
-	"time"
 	"strings"
+	"time"
 )
 
 func Login(ctx context.Context, input LoginInput) (*LoginResponse, error) {
@@ -203,13 +204,39 @@ func AcceptInvitationService(
 			ctx,
 			tx,
 			profileID,
-			invitation.AssignedStateID,
+			invitation.StateID,
 		)
 
 		if err != nil {
 			return shared.NewAPIError(
 				http.StatusInternalServerError,
 				"failed to create state admin",
+			)
+		}
+
+	case "district_admin":
+
+		if !input.DPDPConsent {
+			return shared.NewAPIError(
+				http.StatusBadRequest,
+				"dpdp consent is required",
+			)
+		}
+
+		err = districtadmin.CreateDistrictAdminTx(
+			ctx,
+			tx,
+			profileID,
+			invitation.StateID,
+			invitation.DistrictID,
+			input.DPDPConsent,
+		)
+
+		if err != nil {
+			fmt.Print(err)
+			return shared.NewAPIError(
+				http.StatusInternalServerError,
+				"failed to create district admin",
 			)
 		}
 	}

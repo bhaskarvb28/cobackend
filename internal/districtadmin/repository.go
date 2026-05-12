@@ -1,5 +1,49 @@
 package districtadmin
 
+import (
+	"context"
+
+	"github.com/jackc/pgx/v5"
+)
+
+func CreateDistrictAdminTx(
+	ctx context.Context,
+	tx pgx.Tx,
+	profileID string,
+	stateID *string,
+	districtID *string,
+	dpdpConsent bool,
+) error {
+
+	_, err := tx.Exec(
+		ctx,
+		`
+		INSERT INTO district_admins (
+			profile_id,
+			state_id,
+			district_id,
+			dpdp_consent
+		)
+		VALUES (
+			$1,
+			$2,
+			$3,
+			$4
+		)
+		`,
+		profileID,
+		stateID,
+		districtID,
+		dpdpConsent,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // import (
 // 	"context"
 // 	"errors"

@@ -20,11 +20,10 @@ func RegisterRoutes(r chi.Router) {
 
 			r.Post("/invite", InviteStateAdminHandler)
 
-			// // Get State Admin Routes
 			// r.Get("/", GetStateAdminsHandler)
 			
-			// r.Put("/{id}/assigned-state", UpdateAssignedStateHandler)
-			// r.Delete("/{id}", DeleteStateAdminHandler)
+			r.Put("/{profile_id}/state", UpdateAssignedStateHandler)
+			r.Delete("/{profile_id}", DeleteStateAdminHandler)
 		})
 	})
 }

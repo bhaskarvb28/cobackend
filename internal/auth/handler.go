@@ -92,6 +92,7 @@ func AcceptInviteHandler(
 	)
 
 	if err != nil {
+		fmt.Print(err)
 
 		var apiErr *shared.APIError
 
@@ -109,7 +110,6 @@ func AcceptInviteHandler(
 			return
 		}
 
-		fmt.Print(err)
 
 		utils.WriteJSON(
 			w,

@@ -2,7 +2,7 @@ package stateadmin
 
 type InviteStateAdminInput struct {
 	Email           string `json:"email"`
-	AssignedStateID string `json:"assigned_state_id"`
+	StateID int `json:"state_id"`
 }
 
 // type CreateStateAdminInput struct {
@@ -16,9 +16,9 @@ type InviteStateAdminInput struct {
 
 
 
-// type UpdateAssignedStateInput struct {
-// 	AssignedState string `json:"assigned_state"`
-// }
+type UpdateStateInput struct {
+	State int `json:"state_id"`
+}
 
 // type StateAdminResponse struct {
 // 	ID              string `json:"id"`

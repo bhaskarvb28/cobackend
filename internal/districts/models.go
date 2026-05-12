@@ -1,13 +1,13 @@
 package districts
 
 type District struct {
-	ID 			 string `json:"id"`
-	StateID 	 string `json:"state_id"`
+	ID 			 int `json:"id"`
+	StateID 	 int `json:"state_id"`
 	DistrictName string `json:"name"`
 }
 
 type DistrictResponse struct {
-	ID   string    
+	ID   int    
 	Name string 
 }
 

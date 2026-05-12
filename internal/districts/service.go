@@ -1,11 +1,13 @@
 package districts
 
-import "context"
+import (
+	"context"
+)
 
 func GetDistrictsService(ctx context.Context) ([]District, error) {
 	return GetDistrictsRepository(ctx)
 }
 
-func GetDistrictsByStateIdService(ctx context.Context, stateID string, queryParams GetDistrictQueryParams) ([]DistrictResponse, error) {
+func GetDistrictsByStateIdService(ctx context.Context, stateID int, queryParams GetDistrictQueryParams) ([]DistrictResponse, error) {
 	return GetDistrictsByStateIDRepository(ctx, stateID, queryParams)
 }

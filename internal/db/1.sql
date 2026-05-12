@@ -5,7 +5,7 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 --------------------------------------------------------------------------------------------------------------
 
 CREATE TABLE roles (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id SMALLSERIAL PRIMARY KEY,
 
     name VARCHAR(20) UNIQUE NOT NULL,
 
@@ -24,7 +24,7 @@ INSERT INTO roles (name) VALUES ('player');
 --------------------------------------------------------------------------------------------------------------
 
 CREATE TABLE states (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id SMALLSERIAL PRIMARY KEY,
 
     name VARCHAR(100) UNIQUE NOT NULL,
 
@@ -39,11 +39,11 @@ INSERT INTO states (name) VALUES ('Kerala');
 --------------------------------------------------------------------------------------------------------------
 
 CREATE TABLE districts (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id SERIAL PRIMARY KEY,
 
     name VARCHAR(50) NOT NULL,
 
-    state_id UUID NOT NULL,
+    state_id SMALLINT NOT NULL,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
@@ -81,11 +81,11 @@ VALUES
 --------------------------------------------------------------------------------------------------------------
 
 CREATE TABLE pincodes (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id SERIAL PRIMARY KEY,
 
     code VARCHAR(10) UNIQUE NOT NULL,
 
-    district_id UUID NOT NULL,
+    district_id INT NOT NULL,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
@@ -98,8 +98,6 @@ CREATE TABLE pincodes (
 --------------------------------------------------------------------------------------------------------------
 -- PROFILES
 --------------------------------------------------------------------------------------------------------------
-
--- Normalize email in application layer
 
 CREATE TABLE profiles (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -114,7 +112,7 @@ CREATE TABLE profiles (
 
     contact_number VARCHAR(20) NOT NULL,
 
-    role_id UUID NOT NULL,
+    role_id SMALLINT NOT NULL,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
@@ -149,7 +147,7 @@ VALUES (
 );
 
 --------------------------------------------------------------------------------------------------------------
--- UPDATED_AT TRIGGER
+-- UPDATED_AT TRIGGER FUNCTION
 --------------------------------------------------------------------------------------------------------------
 
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -159,6 +157,10 @@ BEGIN
    RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+--------------------------------------------------------------------------------------------------------------
+-- PROFILES UPDATED_AT TRIGGER
+--------------------------------------------------------------------------------------------------------------
 
 CREATE TRIGGER profiles_set_updated_at
 BEFORE UPDATE ON profiles
@@ -172,7 +174,7 @@ EXECUTE FUNCTION update_updated_at_column();
 CREATE TABLE state_admins (
     profile_id UUID PRIMARY KEY,
 
-    assigned_state_id UUID NOT NULL,
+    state_id SMALLINT NOT NULL,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
@@ -182,24 +184,74 @@ CREATE TABLE state_admins (
         ON DELETE CASCADE
         ON UPDATE CASCADE,
 
-    CONSTRAINT fk_assigned_state
-        FOREIGN KEY (assigned_state_id)
+    CONSTRAINT fk_state
+        FOREIGN KEY (state_id)
         REFERENCES states(id)
         ON DELETE RESTRICT
         ON UPDATE CASCADE
 );
 
 --------------------------------------------------------------------------------------------------------------
--- Academies
+-- DISTRICT ADMINS
 --------------------------------------------------------------------------------------------------------------
-create table academies (
-	id Serial primary key,
-	
-    name varchar(50),
-	district_id UUID NOT NULL,
-	address TEXT not null,
+
+CREATE TABLE district_admins (
+    profile_id UUID PRIMARY KEY,
+
+    state_id SMALLINT NOT NULL,
+
+    district_id INT NOT NULL,
+
+    dpdp_consent BOOLEAN NOT NULL
+        CHECK (dpdp_consent = TRUE),
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_profile
+        FOREIGN KEY (profile_id)
+        REFERENCES profiles(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_state
+        FOREIGN KEY (state_id)
+        REFERENCES states(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_district
+        FOREIGN KEY (district_id)
+        REFERENCES districts(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE
+);
+
+--------------------------------------------------------------------------------------------------------------
+-- DISTRICT ADMINS UPDATED_AT TRIGGER
+--------------------------------------------------------------------------------------------------------------
+
+CREATE TRIGGER district_admins_set_updated_at
+BEFORE UPDATE ON district_admins
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+--------------------------------------------------------------------------------------------------------------
+-- ACADEMIES
+--------------------------------------------------------------------------------------------------------------
+
+CREATE TABLE academies (
+    id SERIAL PRIMARY KEY,
+
+    name VARCHAR(50) NOT NULL,
+
+    district_id INT NOT NULL,
+
+    address TEXT NOT NULL,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT fk_district
@@ -210,23 +262,32 @@ create table academies (
 );
 
 --------------------------------------------------------------------------------------------------------------
--- Invitations
+-- ACADEMIES UPDATED_AT TRIGGER
+--------------------------------------------------------------------------------------------------------------
+
+CREATE TRIGGER academies_set_updated_at
+BEFORE UPDATE ON academies
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+--------------------------------------------------------------------------------------------------------------
+-- INVITATIONS
 --------------------------------------------------------------------------------------------------------------
 
 CREATE TABLE invitations (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id BIGSERIAL PRIMARY KEY,
 
     email VARCHAR(50) NOT NULL,
 
-    role_id UUID NOT NULL,
+    role_id SMALLINT NOT NULL,
 
     invited_by UUID NOT NULL,
 
     token TEXT NOT NULL UNIQUE,
 
-    assigned_state_id UUID,
-    assigned_district_id UUID,
-    assigned_academy_id INT,
+    state_id SMALLINT,
+    district_id INT,
+    academy_id INT,
 
     expires_at TIMESTAMP NOT NULL,
 
@@ -245,18 +306,18 @@ CREATE TABLE invitations (
         REFERENCES profiles(id)
         ON DELETE CASCADE,
 
-    CONSTRAINT fk_assigned_state
-        FOREIGN KEY (assigned_state_id)
+    CONSTRAINT fk_state
+        FOREIGN KEY (state_id)
         REFERENCES states(id)
         ON DELETE RESTRICT,
 
-    CONSTRAINT fk_assigned_district
-        FOREIGN KEY (assigned_district_id)
+    CONSTRAINT fk_district
+        FOREIGN KEY (district_id)
         REFERENCES districts(id)
         ON DELETE RESTRICT,
 
-    CONSTRAINT fk_assigned_academy
-        FOREIGN KEY (assigned_academy_id)
+    CONSTRAINT fk_academy
+        FOREIGN KEY (academy_id)
         REFERENCES academies(id)
         ON DELETE RESTRICT
 );

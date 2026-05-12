@@ -1,8 +1,9 @@
 package districtadmin
 
 type InviteDistrictAdminInput struct {
-	Email 			string `json:"email"`
-	AssignedDistrictID string `json:"assigned_district_id"`
+	Email 		string `json:"email"`
+	StateID		int `json:"state_id"`
+	DistrictID	int `json:"district_id"`
 }
 
 // type CreateDistrictAdminInput struct {

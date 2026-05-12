@@ -2,25 +2,25 @@ package stateadmin
 
 import (
 	"context"
-	// "errors"
+	"errors"
 
-	// "cobackend/internal/db"
+	"cobackend/internal/db"
 
 	// "github.com/google/uuid"
-	// "github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5"
 
 
 	// "strconv"
 
-	// "cobackend/internal/shared"
+	"cobackend/internal/shared"
 )
 
 func CreateStateAdminTx(
 	ctx context.Context,
 	tx pgx.Tx,
 	profileID string,
-	assignedStateID string,
+	StateID *string,
 ) error {
 
 	_, err := tx.Exec(
@@ -28,7 +28,7 @@ func CreateStateAdminTx(
 		`
 		INSERT INTO state_admins (
 			profile_id,
-			assigned_state_id
+			state_id
 		)
 		VALUES (
 			$1,
@@ -36,11 +36,142 @@ func CreateStateAdminTx(
 		)
 		`,
 		profileID,
-		assignedStateID,
+		StateID,
 	)
 
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func CheckStateAdminExists(
+	ctx context.Context,
+	profileID string,
+) (bool, error) {
+
+	var exists bool
+
+	err := db.DB.QueryRow(
+		ctx,
+		`
+		SELECT EXISTS (
+			SELECT 1
+			FROM state_admins
+			WHERE profile_id = $1
+		)
+		`,
+		profileID,
+	).Scan(&exists)
+
+	if err != nil {
+		return false, err
+	}
+
+	return exists, nil
+}
+
+func UpdateAssignedStateRepository(
+	ctx context.Context,
+	profileID string,
+	input UpdateStateInput,
+) error {
+
+	commandTag, err := db.DB.Exec(
+		ctx,
+		`
+		UPDATE state_admins
+		SET state_id = $1
+		WHERE profile_id = $2
+		`,
+		input.State,
+		profileID,
+	)
+
+	if err != nil {
+
+		var pgErr *pgconn.PgError
+
+		if errors.As(err, &pgErr) {
+
+			switch pgErr.Code {
+
+			case "23503":
+				return shared.ErrInvalidState
+
+			case "42P01":
+				return errors.New(
+					"required database table does not exist",
+				)
+
+			default:
+				return errors.New(
+					"failed to update assigned state",
+				)
+			}
+		}
+
+		return errors.New(
+			"database operation failed",
+		)
+	}
+
+	// no rows updated
+	if commandTag.RowsAffected() == 0 {
+		return shared.ErrStateAdminNotFound
+	}
+
+	return nil
+}
+
+func DeleteStateAdminRepository(
+	ctx context.Context,
+	profileID string,
+) error {
+
+	commandTag, err := db.DB.Exec(
+		ctx,
+		`
+		DELETE FROM profiles
+		WHERE id = $1
+		`,
+		profileID,
+	)
+
+	if err != nil {
+
+		var pgErr *pgconn.PgError
+
+		if errors.As(err, &pgErr) {
+
+			switch pgErr.Code {
+
+			// invalid uuid format
+			case "22P02":
+				return shared.ErrInvalidUUID
+
+			// undefined table
+			case "42P01":
+				return errors.New(
+					"required database table does not exist",
+				)
+
+			default:
+				return errors.New(
+					"failed to delete state admin",
+				)
+			}
+		}
+
+		return errors.New(
+			"database operation failed",
+		)
+	}
+
+	// no rows deleted
+	if commandTag.RowsAffected() == 0 {
+		return shared.ErrStateAdminNotFound
 	}
 
 	return nil
@@ -313,134 +444,7 @@ func CreateStateAdminTx(
 // 	return stateAdmins, nil
 // }
 
-// func CheckStateAdminExists(
-// 	ctx context.Context,
-// 	id string,
-// ) (bool, error) {
-
-// 	var exists bool
-
-// 	err := db.DB.QueryRow(
-// 		ctx,
-// 		`
-// 		SELECT EXISTS(
-// 			SELECT 1
-// 			FROM state_admins
-// 			WHERE profile_id = $1
-// 		)
-// 		`,
-// 		id,
-// 	).Scan(&exists)
-
-// 	if err != nil {
-// 		return false, err
-// 	}
-
-// 	return exists, nil
-// }
-
-// func UpdateAssignedStateRepository(
-// 	ctx context.Context,
-// 	id string,
-// 	input UpdateAssignedStateInput,
-// ) error {
-
-// 	commandTag, err := db.DB.Exec(
-// 		ctx,
-// 		`
-// 		UPDATE state_admins
-// 		SET assigned_state = $1
-// 		WHERE profile_id = $2
-// 		`,
-// 		input.AssignedState,
-// 		id,
-// 	)
-
-// 	if err != nil {
-
-// 		var pgErr *pgconn.PgError
-
-// 		if errors.As(err, &pgErr) {
-
-// 			switch pgErr.Code {
-
-// 			case "23503":
-// 				return shared.ErrInvalidState
-
-// 			case "42P01":
-// 				return errors.New(
-// 					"required database table does not exist",
-// 				)
-
-// 			default:
-// 				return errors.New(
-// 					"failed to update assigned state",
-// 				)
-// 			}
-// 		}
-
-// 		return errors.New(
-// 			"database operation failed",
-// 		)
-// 	}
-
-// 	// no rows updated
-// 	if commandTag.RowsAffected() == 0 {
-// 		return shared.ErrStateAdminNotFound
-// 	}
-
-// 	return nil
-// }
 
 
-// func DeleteStateAdminRepository(
-// 	ctx context.Context,
-// 	id string,
-// ) error {
 
-// 	commandTag, err := db.DB.Exec(
-// 		ctx,
-// 		`
-// 		DELETE FROM profiles
-// 		WHERE id = $1
-// 		`,
-// 		id,
-// 	)
 
-// 	if err != nil {
-
-// 		var pgErr *pgconn.PgError
-
-// 		if errors.As(err, &pgErr) {
-
-// 			switch pgErr.Code {
-
-// 			// invalid uuid format
-// 			case "22P02":
-// 				return shared.ErrInvalidUUID
-
-// 			// undefined table
-// 			case "42P01":
-// 				return errors.New(
-// 					"required database table does not exist",
-// 				)
-
-// 			default:
-// 				return errors.New(
-// 					"failed to delete state admin",
-// 				)
-// 			}
-// 		}
-
-// 		return errors.New(
-// 			"database operation failed",
-// 		)
-// 	}
-
-// 	// no rows deleted
-// 	if commandTag.RowsAffected() == 0 {
-// 		return shared.ErrStateAdminNotFound
-// 	}
-
-// 	return nil
-// }

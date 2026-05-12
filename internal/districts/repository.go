@@ -49,7 +49,7 @@ func GetDistrictsRepository(ctx context.Context) ([]District, error) {
 
 func GetDistrictsByStateIDRepository(
 	ctx context.Context,
-	stateID string,
+	stateID int,
 	queryParams GetDistrictQueryParams,
 ) ([]DistrictResponse, error) {
 
@@ -127,7 +127,7 @@ func GetDistrictsByStateIDRepository(
 
 func CheckDistrictExists(
 	ctx context.Context,
-	districtID string,
+	districtID int,
 ) (bool, error) {
 
 	var exists bool
@@ -153,10 +153,10 @@ func CheckDistrictExists(
 
 func GetStateIDByDistrictID(
 	ctx context.Context,
-	districtID string,
-) (string, error) {
+	districtID int,
+) (int, error) {
 
-	var stateID string
+	var stateID int
 
 	err := db.DB.QueryRow(
 		ctx,
@@ -169,7 +169,7 @@ func GetStateIDByDistrictID(
 	).Scan(&stateID)
 
 	if err != nil {
-		return "", err
+		return 0, err
 	}
 
 	return stateID, nil

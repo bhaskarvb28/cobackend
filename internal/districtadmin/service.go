@@ -38,8 +38,6 @@ func InviteDistrictAdminService(
 		strings.TrimSpace(input.Email),
 	)
 
-	assignedDistrictID := strings.TrimSpace(input.AssignedDistrictID)
-
 	if email == "" {
 		return "", shared.NewAPIError(
 			http.StatusBadRequest,
@@ -54,7 +52,7 @@ func InviteDistrictAdminService(
 		)
 	}
 
-	districtExists, err := districts.CheckDistrictExists(ctx, assignedDistrictID)
+	districtExists, err := districts.CheckDistrictExists(ctx, input.DistrictID)
 
 	if err != nil {
 		return "", err
@@ -111,9 +109,9 @@ func InviteDistrictAdminService(
 
 	expiresAt := time.Now().Add(24 * time.Hour)
 
-	assignedStateID, err := districts.GetStateIDByDistrictID(
+	StateID, err := districts.GetStateIDByDistrictID(
 		ctx,
-		assignedDistrictID,
+		input.DistrictID,
 	)
 
 	if err != nil {
@@ -126,8 +124,8 @@ func InviteDistrictAdminService(
 		roleID,
 		authUserID,
 		token,
-		&assignedStateID,
-		&assignedDistrictID,
+		&StateID,
+		&input.DistrictID,
 		nil,
 		expiresAt,
 	)
