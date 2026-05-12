@@ -11,6 +11,9 @@ import (
 
 	"fmt"
 
+	"strconv"
+	"strings"
+
 	// "github.com/go-chi/chi/v5"
 	// "github.com/google/uuid"
 )
@@ -89,78 +92,187 @@ func InviteDistrictAdminHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// func CreateDistrictAdminHandler(w http.ResponseWriter, r *http.Request) {
-// 	var input CreateDistrictAdminInput
+func GetDistrictAdminsHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
 
-// 	err := json.NewDecoder(r.Body).Decode(&input)
-// 	if err != nil {
-// 		http.Error(w, "Invalid request body", http.StatusBadRequest)
-// 		return
-// 	}
+	pageStr := r.URL.Query().Get("page")
+	limitStr := r.URL.Query().Get("limit")
+	search := r.URL.Query().Get("search")
+	stateStr := r.URL.Query().Get("state_id")
+	districtStr := r.URL.Query().Get("district_id")
+	sortBy := r.URL.Query().Get("sort_by")
+	orderBy := r.URL.Query().Get("order_by")
 
-// 	err = CreateDistrictAdminService(r.Context(), input)
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusBadRequest)
-// 		return
-// 	}
+	stateID := 0
+	if stateStr != "" {
 
-// 	w.Header().Set("Content-Type", "application/json")
-// 	w.WriteHeader(http.StatusCreated)
-// 	json.NewEncoder(w).Encode(map[string]string{
-// 		"message": "District admin created successfully",
-// 	})
-// }
+		parsed, err := strconv.Atoi(stateStr)
+		if err != nil {
 
-// func GetDistrictAdminsHandler(w http.ResponseWriter, r *http.Request) {
-// 	pageStr := r.URL.Query().Get("page")
-// 	limitStr := r.URL.Query().Get("limit")
-// 	search := r.URL.Query().Get("search")
-// 	stateStr := r.URL.Query().Get("state_id")
-// 	districtStr := r.URL.Query().Get("district_id")
-// 	status := r.URL.Query().Get("status")
+			utils.WriteJSON(
+				w,
+				http.StatusBadRequest,
+				shared.APIResponse{
+					Success: false,
+					Message: "invalid state_id",
+				},
+			)
 
-// 	stateID := 0
-// 	if stateStr != "" {
-// 		if parsed, err := strconv.Atoi(stateStr); err == nil {
-// 			stateID = parsed
-// 		}
-// 	}
+			return
+		}
 
-// 	districtID := 0
-// 	if districtStr != "" {
-// 		if parsed, err := strconv.Atoi(districtStr); err == nil {
-// 			districtID = parsed
-// 		}
-// 	}
+		stateID = parsed
+	}
 
-// 	page, err := strconv.Atoi(pageStr)
-// 	if err != nil || page < 1 {
-// 		page = 1
-// 	}
+	districtID := 0
+	if districtStr != "" {
 
-// 	limit, err := strconv.Atoi(limitStr)
-// 	if err != nil || limit < 1 {
-// 		limit = 10
-// 	}
+		parsed, err := strconv.Atoi(districtStr)
+		if err != nil {
 
-// 	query := GetDistrictAdminsQuery{
-// 		Page:       page,
-// 		Limit:      limit,
-// 		Search:     search,
-// 		StateID:    stateID,
-// 		DistrictID: districtID,
-// 		Status:     status,
-// 	}
+			utils.WriteJSON(
+				w,
+				http.StatusBadRequest,
+				shared.APIResponse{
+					Success: false,
+					Message: "invalid district_id",
+				},
+			)
 
-// 	admins, err := GetDistrictAdminsService(r.Context(), query)
-// 	if err != nil {
-// 		http.Error(w, "Failed to fetch district admins", http.StatusInternalServerError)
-// 		return
-// 	}
+			return
+		}
 
-// 	w.Header().Set("Content-Type", "application/json")
-// 	json.NewEncoder(w).Encode(admins)
-// }
+		districtID = parsed
+	}
+
+	page := 1
+	if pageStr != "" {
+
+		parsed, err := strconv.Atoi(pageStr)
+		if err != nil || parsed < 1 {
+
+			utils.WriteJSON(
+				w,
+				http.StatusBadRequest,
+				shared.APIResponse{
+					Success: false,
+					Message: "invalid page",
+				},
+			)
+
+			return
+		}
+
+		page = parsed
+	}
+
+	limit := 10
+	if limitStr != "" {
+
+		if limitStr == "all" {
+
+			limit = 0
+
+		} else {
+
+			parsed, err := strconv.Atoi(limitStr)
+			if err != nil || parsed < 1 {
+
+				utils.WriteJSON(
+					w,
+					http.StatusBadRequest,
+					shared.APIResponse{
+						Success: false,
+						Message: "invalid limit",
+					},
+				)
+
+				return
+			}
+
+			limit = parsed
+		}
+	}
+
+	if sortBy == "" {
+		sortBy = "first_name"
+	}
+
+	if orderBy == "" {
+		orderBy = "asc"
+	}
+
+	_, exists := AllowedDistrictAdminSortFields[sortBy]
+
+	if !exists {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "invalid sort_by field",
+			},
+		)
+
+		return
+	}
+
+	orderBy = strings.ToUpper(orderBy)
+
+	if orderBy != "ASC" && orderBy != "DESC" {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "invalid order_by value",
+			},
+		)
+
+		return
+	}
+
+	query := GetDistrictAdminsQuery{
+		Page:       page,
+		Limit:      limit,
+		Search:     search,
+		StateID:    stateID,
+		DistrictID: districtID,
+		SortBy: 	sortBy,
+		OrderBy: 	orderBy,
+	}
+
+	result, err := GetDistrictAdminsService(
+		r.Context(),
+		query,
+	)
+
+	if err != nil {
+		fmt.Print(err)
+
+		utils.WriteError(
+			w,
+			err,
+			"failed to fetch district admins",
+		)
+
+		return
+	}
+
+	utils.WriteJSON(
+		w,
+		http.StatusOK,
+		shared.APIResponse{
+			Success: true,
+			Message: "district admins fetched successfully",
+			Data:    result,
+		},
+	)
+}
 
 // func UpdateDistrictAdminHandler(w http.ResponseWriter, r *http.Request) {
 // 	id := chi.URLParam(r, "id")

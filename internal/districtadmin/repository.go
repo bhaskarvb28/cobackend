@@ -4,6 +4,11 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5"
+
+	"math"
+	"strconv"
+
+	"cobackend/internal/db"
 )
 
 func CreateDistrictAdminTx(
@@ -42,6 +47,165 @@ func CreateDistrictAdminTx(
 	}
 
 	return nil
+}
+
+func GetDistrictAdminsRepository(
+	ctx context.Context,
+	query GetDistrictAdminsQuery,
+) (PaginatedDistrictAdmins, error) {
+
+	offset := 0
+
+	if query.Limit > 0 {
+		offset = (query.Page - 1) * query.Limit
+	}
+
+	baseQuery := `
+	SELECT
+		p.id,
+		p.first_name,
+		p.last_name,
+		p.email,
+		p.contact_number,
+		da.state_id,
+		da.district_id,
+		da.dpdp_consent
+	FROM profiles p
+	INNER JOIN district_admins da
+		ON p.id = da.profile_id
+	WHERE 1=1
+	`
+
+	countQuery := `
+	SELECT COUNT(*)
+	FROM profiles p
+	INNER JOIN district_admins da
+		ON p.id = da.profile_id
+	WHERE 1=1
+	`
+
+	args := []interface{}{}
+	argPos := 1
+
+	if query.Search != "" {
+
+		searchCondition := `
+		AND (
+			p.first_name ILIKE $` + strconv.Itoa(argPos) + `
+			OR p.last_name ILIKE $` + strconv.Itoa(argPos) + `
+			OR p.email ILIKE $` + strconv.Itoa(argPos) + `
+		)
+		`
+
+		baseQuery += searchCondition
+		countQuery += searchCondition
+
+		args = append(args, "%"+query.Search+"%")
+		argPos++
+	}
+
+	if query.StateID != 0 {
+
+		condition := `
+		AND da.state_id = $` + strconv.Itoa(argPos)
+
+		baseQuery += condition
+		countQuery += condition
+
+		args = append(args, query.StateID)
+		argPos++
+	}
+
+	if query.DistrictID != 0 {
+
+		condition := `
+		AND da.district_id = $` + strconv.Itoa(argPos)
+
+		baseQuery += condition
+		countQuery += condition
+
+		args = append(args, query.DistrictID)
+		argPos++
+	}
+
+	var total int
+
+	err := db.DB.QueryRow(
+		ctx,
+		countQuery,
+		args...,
+	).Scan(&total)
+
+	if err != nil {
+		return PaginatedDistrictAdmins{}, err
+	}
+
+	baseQuery += `
+	ORDER BY ` + query.SortBy + ` ` + query.OrderBy
+
+	if query.Limit > 0 {
+
+		baseQuery += `
+		LIMIT $` + strconv.Itoa(argPos) + `
+		OFFSET $` + strconv.Itoa(argPos+1)
+
+		args = append(args, query.Limit, offset)
+	}
+
+	rows, err := db.DB.Query(
+		ctx,
+		baseQuery,
+		args...,
+	)
+
+	if err != nil {
+		return PaginatedDistrictAdmins{}, err
+	}
+
+	defer rows.Close()
+
+	admins :=  []DistrictAdmin{}
+
+	for rows.Next() {
+
+		var a DistrictAdmin
+
+		err := rows.Scan(
+			&a.ID,
+			&a.FirstName,
+			&a.LastName,
+			&a.Email,
+			&a.ContactNumber,
+			&a.StateID,
+			&a.DistrictID,
+			&a.DPDPConsent,
+		)
+
+		if err != nil {
+			return PaginatedDistrictAdmins{}, err
+		}
+
+		admins = append(admins, a)
+	}
+
+	totalPages := 1
+
+	if query.Limit > 0 {
+
+		totalPages = int(math.Ceil(
+			float64(total) / float64(query.Limit),
+		))
+	}
+
+	return PaginatedDistrictAdmins{
+		Items:       admins,
+		Page:        query.Page,
+		Limit:       query.Limit,
+		Total:       total,
+		TotalPages:  totalPages,
+		HasNext:     query.Page < totalPages,
+		HasPrevious: query.Page > 1,
+	}, nil
 }
 
 // import (
@@ -167,100 +331,7 @@ func CreateDistrictAdminTx(
 // 	return nil
 // }
 
-// func GetDistrictAdminsRepository(
-// 	ctx context.Context,
-// 	query GetDistrictAdminsQuery,
-// ) ([]DistrictAdmin, error) {
 
-// 	offset := (query.Page - 1) * query.Limit
-
-// 	baseQuery := `
-// 	SELECT
-// 		p.id,
-// 		p.first_name,
-// 		p.last_name,
-// 		p.email,
-// 		p.contact_number,
-// 		da.state_id,
-// 		da.district_id,
-// 		da.dpdp_consent,
-// 		da.approval_status,
-// 		da.approval_notes
-// 	FROM profiles p
-// 	INNER JOIN district_admins da
-// 		ON p.id = da.profile_id
-// 	WHERE 1=1
-// 	`
-
-// 	args := []interface{}{}
-// 	argPos := 1
-
-// 	if query.Search != "" {
-// 		baseQuery += `
-// 		AND (
-// 			p.first_name ILIKE $` + strconv.Itoa(argPos) + `
-// 			OR p.last_name ILIKE $` + strconv.Itoa(argPos) + `
-// 			OR p.email ILIKE $` + strconv.Itoa(argPos) + `
-// 		)
-// 		`
-// 		args = append(args, "%"+query.Search+"%")
-// 		argPos++
-// 	}
-
-// 	if query.StateID != 0 {
-// 		baseQuery += ` AND da.state_id = $` + strconv.Itoa(argPos)
-// 		args = append(args, query.StateID)
-// 		argPos++
-// 	}
-
-// 	if query.DistrictID != 0 {
-// 		baseQuery += ` AND da.district_id = $` + strconv.Itoa(argPos)
-// 		args = append(args, query.DistrictID)
-// 		argPos++
-// 	}
-
-// 	if query.Status != "" {
-// 		baseQuery += ` AND da.approval_status = $` + strconv.Itoa(argPos)
-// 		args = append(args, query.Status)
-// 		argPos++
-// 	}
-
-// 	baseQuery += `
-// 	ORDER BY p.first_name
-// 	LIMIT $` + strconv.Itoa(argPos) + `
-// 	OFFSET $` + strconv.Itoa(argPos+1)
-
-// 	args = append(args, query.Limit, offset)
-
-// 	rows, err := db.DB.Query(ctx, baseQuery, args...)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	defer rows.Close()
-
-// 	var admins []DistrictAdmin
-// 	for rows.Next() {
-// 		var a DistrictAdmin
-// 		err := rows.Scan(
-// 			&a.ID,
-// 			&a.FirstName,
-// 			&a.LastName,
-// 			&a.Email,
-// 			&a.ContactNumber,
-// 			&a.StateID,
-// 			&a.DistrictID,
-// 			&a.DPDPConsent,
-// 			&a.ApprovalStatus,
-// 			&a.ApprovalNotes,
-// 		)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		admins = append(admins, a)
-// 	}
-
-// 	return admins, nil
-// }
 
 // func UpdateDistrictAdminRepository(
 // 	ctx context.Context,

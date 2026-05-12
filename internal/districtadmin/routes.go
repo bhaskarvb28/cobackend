@@ -19,8 +19,9 @@ func RegisterRoutes(r chi.Router) {
 
 			r.Post("/invite", InviteDistrictAdminHandler)
 
+			r.Get("/", GetDistrictAdminsHandler)
+
 			// r.Post("/", CreateDistrictAdminHandler)
-			// r.Get("/", GetDistrictAdminsHandler)
 			// r.Put("/{id}", UpdateDistrictAdminHandler)
 			// r.Delete("/{id}", DeleteDistrictAdminHandler)
 		})
