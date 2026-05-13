@@ -5,6 +5,38 @@ type InviteStateAdminInput struct {
 	StateID int `json:"state_id"`
 }
 
+type GetStateAdminsQuery struct {
+	Page 		int
+	Limit 		int
+	Search 		string
+	StateID 	int	
+	SortBy 		string // Column name: first_name, last_name, email, created_at
+	OrderBy 	string // asc or desc
+}
+
+type StateAdmin struct {
+	ID              string `json:"id"`
+	FirstName       string `json:"first_name"`
+	LastName        string `json:"last_name"`
+	Email           string `json:"email"`
+	ContactNumber   string `json:"contact_number"`
+	StateID         int    `json:"state_id"`
+}
+
+type PaginatedStateAdmins struct {
+	Items       []StateAdmin 		 `json:"items"`
+	Page        int                  `json:"page"`
+	Limit       int                  `json:"limit"`
+	Total       int                  `json:"total"`
+	TotalPages  int                  `json:"total_pages"`
+	HasNext     bool                 `json:"has_next"`
+	HasPrevious bool                 `json:"has_previous"`
+}
+
+type UpdateStateInput struct {
+	StateID int `json:"state_id"`
+}
+
 // type CreateStateAdminInput struct {
 // 	FirstName     string `json:"first_name"`
 // 	LastName      string `json:"last_name"`
@@ -14,24 +46,3 @@ type InviteStateAdminInput struct {
 // 	AssignedState string    `json:"assigned_state"`
 // }
 
-
-
-type UpdateStateInput struct {
-	State int `json:"state_id"`
-}
-
-// type StateAdminResponse struct {
-// 	ID              string `json:"id"`
-// 	FirstName       string `json:"first_name"`
-// 	LastName        string `json:"last_name"`
-// 	Email           string `json:"email"`
-// 	ContactNumber   string `json:"contact_number"`
-// 	AssignedState   int    `json:"assigned_state"`
-// }
-
-// type GetStateAdminsQuery struct {
-// 	Page           int
-// 	Limit          int
-// 	Search         string
-// 	AssignedState  string
-// }

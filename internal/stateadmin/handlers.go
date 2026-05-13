@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	// "strings"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 
@@ -16,6 +16,8 @@ import (
 	"fmt"
 
 	"cobackend/internal/validation"
+
+	"strings"
 
 )
 
@@ -92,91 +94,173 @@ func InviteStateAdminHandler(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// func GetStateAdminsHandler(w http.ResponseWriter, r *http.Request) {
+func GetStateAdminsHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
 
-// 	pageStr := r.URL.Query().Get("page")
-// 	limitStr := r.URL.Query().Get("limit")
-// 	search := strings.TrimSpace(
-// 		r.URL.Query().Get("search"),
-// 	)
-// 	// stateStr := r.URL.Query().Get("assigned_state")
+	pageStr := r.URL.Query().Get("page")
+	limitStr := r.URL.Query().Get("limit")
+	search := strings.TrimSpace(
+		r.URL.Query().Get("search"),
+	)
+	stateStr := r.URL.Query().Get("state_id")
+	sortBy := r.URL.Query().Get("sort_by")
+	orderBy := r.URL.Query().Get("order_by")
 
-// 	// default values
-// 	page := 1
-// 	limit := 10
-// 	state := 0
+	page := 1
+	if pageStr != "" {
 
-// 	// parse page
-// 	if pageStr != "" {
+		parsed, err := strconv.Atoi(pageStr)
+		if err != nil || parsed < 1 {
 
-// 		parsedPage, err := strconv.Atoi(pageStr)
-// 		if err != nil || parsedPage < 1 {
-// 			utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
-// 				Success: false,
-// 				Message: "invalid page parameter",
-// 			})
-// 			return
-// 		}
+			utils.WriteJSON(
+				w,
+				http.StatusBadRequest,
+				shared.APIResponse{
+					Success: false,
+					Message: "invalid page",
+				},
+			)
 
-// 		page = parsedPage
-// 	}
+			return
+		}
 
-// 	// parse limit
-// 	if limitStr != "" {
+		page = parsed
+	}
 
-// 		parsedLimit, err := strconv.Atoi(limitStr)
-// 		if err != nil || parsedLimit < 1 {
-// 			utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
-// 				Success: false,
-// 				Message: "invalid limit parameter",
-// 			})
-// 			return
-// 		}
+	limit := 10
+	if limitStr != "" {
 
-// 		limit = parsedLimit
-// 	}
+		if limitStr == "all" {
 
-// 	// parse assigned_state
-// 	// if stateStr != "" {
+			limit = 0
 
-// 	// 	parsedState, err := strconv.Atoi(stateStr)
-// 	// 	if err != nil || parsedState < 1 {
-// 	// 		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
-// 	// 			Success: false,
-// 	// 			Message: "invalid assigned_state parameter",
-// 	// 		})
-// 	// 		return
-// 	// 	}
+		} else {
 
-// 	// 	state = parsedState
-// 	// }
+			parsed, err := strconv.Atoi(limitStr)
+			if err != nil || parsed < 1 {
 
-// 	query := GetStateAdminsQuery{
-// 		Page:   page,
-// 		Limit:  limit,
-// 		Search: search,
-// 		AssignedState:  state,
-// 	}
+				utils.WriteJSON(
+					w,
+					http.StatusBadRequest,
+					shared.APIResponse{
+						Success: false,
+						Message: "invalid limit",
+					},
+				)
 
-// 	stateAdmins, err := GetStateAdminsService(
-// 		r.Context(),
-// 		query,
-// 	)
+				return
+			}
 
-// 	if err != nil {
-// 		utils.WriteJSON(w, http.StatusInternalServerError, shared.APIResponse{
-// 			Success: false,
-// 			Message: "failed to fetch state admins",
-// 		})
-// 		return
-// 	}
+			limit = parsed
+		}
+	}
 
-// 	utils.WriteJSON(w, http.StatusOK, shared.APIResponse{
-// 		Success: true,
-// 		Message: "state admins fetched successfully",
-// 		Data:    stateAdmins,
-// 	})
-// }
+	stateID := 0
+	if stateStr != "" {
+
+		parsed, err := strconv.Atoi(stateStr)
+		if err != nil {
+
+			utils.WriteJSON(
+				w,
+				http.StatusBadRequest,
+				shared.APIResponse{
+					Success: false,
+					Message: "invalid state_id",
+				},
+			)
+
+			return
+		}
+
+		stateID = parsed
+	}
+
+	if sortBy == "" {
+		sortBy = "first_name"
+	}
+
+	if orderBy == "" {
+		orderBy = "asc"
+	}
+
+	validSortFields := map[string]bool{
+		"first_name": true,
+		"last_name":  true,
+		"email":      true,
+		"created_at": true,
+	}
+
+	_, exists := validSortFields[sortBy]
+
+	if !exists {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "invalid sort_by field",
+			},
+		)
+
+		return
+	}
+
+	orderBy = strings.ToUpper(orderBy)
+
+	if orderBy != "ASC" && orderBy != "DESC" {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "invalid order_by value",
+			},
+		)
+
+		return
+	}
+
+	query := GetStateAdminsQuery{
+		Page:          page,
+		Limit:         limit,
+		Search:        search,
+		StateID: 	   stateID,
+		SortBy:        sortBy,
+		OrderBy:       orderBy,
+	}
+
+	result, err := GetStateAdminsService(
+		r.Context(),
+		query,
+	)
+
+	if err != nil {
+		fmt.Print(err)
+
+		utils.WriteError(
+			w,
+			err,
+			"failed to fetch state admins",
+		)
+
+		return
+	}
+
+	utils.WriteJSON(
+		w,
+		http.StatusOK,
+		shared.APIResponse{
+			Success: true,
+			Message: "state admins fetched successfully",
+			Data:    result,
+		},
+	)
+}
 
 func UpdateAssignedStateHandler(
 	w http.ResponseWriter,
@@ -216,7 +300,7 @@ func UpdateAssignedStateHandler(
 		return
 	}
 
-	if input.State == 0 {
+	if input.StateID == 0 {
 		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
 			Success: false,
 			Message: "state id is required",

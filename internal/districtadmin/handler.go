@@ -99,7 +99,9 @@ func GetDistrictAdminsHandler(
 
 	pageStr := r.URL.Query().Get("page")
 	limitStr := r.URL.Query().Get("limit")
-	search := r.URL.Query().Get("search")
+	search := strings.TrimSpace(
+		r.URL.Query().Get("search"),
+	)
 	stateStr := r.URL.Query().Get("state_id")
 	districtStr := r.URL.Query().Get("district_id")
 	sortBy := r.URL.Query().Get("sort_by")

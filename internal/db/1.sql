@@ -238,6 +238,37 @@ FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column();
 
 --------------------------------------------------------------------------------------------------------------
+-- DISTRICT COACHES
+--------------------------------------------------------------------------------------------------------------
+
+CREATE TABLE district_coaches (
+
+    profile_id UUID NOT PRIMARY KEY,
+    district_id INT NOT NULL,
+
+    coach_code VARCHAR(20) UNIQUE,
+    coaching_certificate_proof TEXT,
+
+    dpdp_consent BOOLEAN NOT NULL DEFAULT FALSE,
+    
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    
+    CONSTRAINT fk_profiles
+        FOREIGN KEY (profile_id)
+        REFERENCES profiles(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+        
+    CONSTRAINT fk_districts
+        FOREIGN KEY (district_id)
+        REFERENCES districts(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE
+);
+
+
+--------------------------------------------------------------------------------------------------------------
 -- ACADEMIES
 --------------------------------------------------------------------------------------------------------------
 
@@ -321,3 +352,4 @@ CREATE TABLE invitations (
         REFERENCES academies(id)
         ON DELETE RESTRICT
 );
+

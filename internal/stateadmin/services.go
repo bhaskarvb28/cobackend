@@ -205,9 +205,16 @@ func InviteStateAdminService(
 	return inviteLink, nil
 }
 
-// func GetStateAdminsService(ctx context.Context, query GetStateAdminsQuery) ([]StateAdminResponse, error) {
-// 	return GetStateAdminsRepository(ctx, query)
-// }
+func GetStateAdminsService(
+	ctx context.Context,
+	query GetStateAdminsQuery,
+) (PaginatedStateAdmins, error) {
+
+	return GetStateAdminsRepository(
+		ctx,
+		query,
+	)
+}
 
 
 func UpdateStateService(
@@ -233,7 +240,7 @@ func UpdateStateService(
 	// validate state exists
 	stateExists, err := states.CheckStateExists(
 		ctx,
-		input.State,
+		input.StateID,
 	)
 
 	if err != nil {

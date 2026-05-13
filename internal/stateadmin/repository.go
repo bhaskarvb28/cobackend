@@ -3,6 +3,7 @@ package stateadmin
 import (
 	"context"
 	"errors"
+	"math"
 
 	"cobackend/internal/db"
 
@@ -11,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 
-	// "strconv"
+	"strconv"
 
 	"cobackend/internal/shared"
 )
@@ -85,7 +86,7 @@ func UpdateAssignedStateRepository(
 		SET state_id = $1
 		WHERE profile_id = $2
 		`,
-		input.State,
+		input.StateID,
 		profileID,
 	)
 
@@ -175,6 +176,155 @@ func DeleteStateAdminRepository(
 	}
 
 	return nil
+}
+
+func GetStateAdminsRepository(
+	ctx context.Context,
+	query GetStateAdminsQuery,
+) (PaginatedStateAdmins, error) {
+
+	offset := 0
+
+	if query.Limit > 0 {
+		offset = (query.Page - 1) * query.Limit
+	}
+
+	baseQuery := `
+	SELECT
+		p.id,
+		p.first_name,
+		p.last_name,
+		p.email,
+		p.contact_number,
+		sa.state_id
+	FROM profiles p
+	INNER JOIN state_admins sa
+		ON p.id = sa.profile_id
+	LEFT JOIN states s
+		ON s.id = sa.state_id
+	WHERE 1=1
+	`
+
+	countQuery := `
+	SELECT COUNT(*)
+	FROM profiles p
+	INNER JOIN state_admins sa
+		ON p.id = sa.profile_id
+	WHERE 1=1
+	`
+
+	args := []interface{}{}
+	argPos := 1
+
+	if query.Search != "" {
+
+		searchCondition := `
+		AND (
+			p.first_name ILIKE $` + strconv.Itoa(argPos) + `
+			OR p.last_name ILIKE $` + strconv.Itoa(argPos) + `
+			OR p.email ILIKE $` + strconv.Itoa(argPos) + `
+		)
+		`
+
+		baseQuery += searchCondition
+		countQuery += searchCondition
+
+		args = append(args, "%"+query.Search+"%")
+		argPos++
+	}
+
+	if query.StateID != 0 {
+
+		condition := `
+		AND sa.state_id = $` + strconv.Itoa(argPos)
+
+		baseQuery += condition
+		countQuery += condition
+
+		args = append(args, query.StateID)
+		argPos++
+	}
+
+	var total int
+
+	err := db.DB.QueryRow(
+		ctx,
+		countQuery,
+		args...,
+	).Scan(&total)
+
+	if err != nil {
+		return PaginatedStateAdmins{}, err
+	}
+
+	baseQuery += `
+	ORDER BY ` + query.SortBy + ` ` + query.OrderBy
+
+	if query.Limit > 0 {
+
+		baseQuery += `
+		LIMIT $` + strconv.Itoa(argPos) + `
+		OFFSET $` + strconv.Itoa(argPos+1)
+
+		args = append(args, query.Limit, offset)
+	}
+
+	rows, err := db.DB.Query(
+		ctx,
+		baseQuery,
+		args...,
+	)
+
+	if err != nil {
+		return PaginatedStateAdmins{}, err
+	}
+
+	defer rows.Close()
+
+	admins := []StateAdmin{}
+
+	for rows.Next() {
+
+		var a StateAdmin
+
+		err := rows.Scan(
+			&a.ID,
+			&a.FirstName,
+			&a.LastName,
+			&a.Email,
+			&a.ContactNumber,
+			&a.StateID,
+		)
+
+		if err != nil {
+			return PaginatedStateAdmins{}, err
+		}
+
+		admins = append(admins, a)
+	}
+
+	if err := rows.Err(); err != nil {
+		return PaginatedStateAdmins{}, err
+	}
+
+	totalPages := 1
+
+	if query.Limit > 0 {
+
+		totalPages = int(math.Ceil(
+			float64(total) / float64(query.Limit),
+		))
+	}
+
+	return PaginatedStateAdmins{
+		Items:       admins,
+		Page:        query.Page,
+		Limit:       query.Limit,
+		Total:       total,
+		TotalPages:  totalPages,
+		HasNext:     query.Page < totalPages,
+		HasPrevious: query.Page > 1,
+	}, nil
 }
 
 // Super Admin Can Create a State Admin
