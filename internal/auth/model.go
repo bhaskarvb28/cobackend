@@ -35,6 +35,9 @@ type AcceptInvitationInput struct {
 	ContactNumber string `json:"contact_number"`
 
 	DPDPConsent bool `json:"dpdp_consent,omitempty"`
+	CoachCode                string `json:"coach_code"`
+	CoachingCertificateProof string `json:"coaching_certificate_proof"`
+
 
 	// Specialization string `json:"specialization,omitempty"`
 

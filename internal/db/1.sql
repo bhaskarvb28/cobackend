@@ -15,6 +15,7 @@ CREATE TABLE roles (
 INSERT INTO roles (name) VALUES ('super_admin');
 INSERT INTO roles (name) VALUES ('state_admin');
 INSERT INTO roles (name) VALUES ('district_admin');
+INSERT INTO roles (name) VALUES ('district_coach');
 INSERT INTO roles (name) VALUES ('academic_admin');
 INSERT INTO roles (name) VALUES ('coach');
 INSERT INTO roles (name) VALUES ('player');
@@ -243,14 +244,15 @@ EXECUTE FUNCTION update_updated_at_column();
 
 CREATE TABLE district_coaches (
 
-    profile_id UUID NOT PRIMARY KEY,
+    profile_id UUID PRIMARY KEY,
     district_id INT NOT NULL,
 
     coach_code VARCHAR(20) UNIQUE,
     coaching_certificate_proof TEXT,
 
-    dpdp_consent BOOLEAN NOT NULL DEFAULT FALSE,
-    
+    dpdp_consent BOOLEAN NOT NULL
+        CHECK (dpdp_consent = TRUE),
+
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     

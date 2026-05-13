@@ -1,13 +1,15 @@
 package main
 
 import (
+	"cobackend/internal/academy"
 	"cobackend/internal/auth"
 	"cobackend/internal/db"
+	"cobackend/internal/districtCoach"
 	"cobackend/internal/districts"
 	"cobackend/internal/states"
 
-	"cobackend/internal/stateadmin"
 	"cobackend/internal/districtadmin"
+	"cobackend/internal/stateadmin"
 
 	"log"
 	"net/http"
@@ -15,7 +17,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/joho/godotenv"
-
 )
 
 func main() {
@@ -41,6 +42,9 @@ func main() {
 
 		stateadmin.RegisterRoutes(r)
 		districtadmin.RegisterRoutes(r)
+		districtCoach.RegisterRoutes(r)
+
+		academy.RegisterRoutes(r)
 	})
 
 	

@@ -21,7 +21,7 @@ func CreateStateAdminTx(
 	ctx context.Context,
 	tx pgx.Tx,
 	profileID string,
-	StateID *string,
+	StateID *int,
 ) error {
 
 	_, err := tx.Exec(

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"cobackend/internal/districtadmin"
 	"cobackend/internal/invitations"
 	"cobackend/internal/jwt"
 	"cobackend/internal/profiles"
@@ -12,7 +13,7 @@ import (
 	"cobackend/internal/stateadmin"
 	"cobackend/internal/utils"
 	"cobackend/internal/validation"
-	"cobackend/internal/districtadmin"
+	"cobackend/internal/districtCoach"
 
 	"github.com/jackc/pgx/v5"
 
@@ -239,6 +240,39 @@ func AcceptInvitationService(
 				"failed to create district admin",
 			)
 		}
+
+	case "district_coach":
+
+		if !input.DPDPConsent {
+			return shared.NewAPIError(
+				http.StatusBadRequest,
+				"dpdp consent is required",
+			)
+		}
+
+		if input.CoachCode == "" {
+			return shared.NewAPIError(
+				http.StatusBadRequest,
+				"coach code is required",
+			)
+		}
+
+		if input.CoachingCertificateProof == "" {
+			return shared.NewAPIError(
+				http.StatusBadRequest,
+				"coaching certificate proof is required",
+			)
+		}
+
+		err = districtCoach.CreateDistrictCoachTx(
+			ctx,
+			tx,
+			profileID,
+			invitation.DistrictID,
+			input.CoachCode,
+			input.CoachingCertificateProof,
+			input.DPDPConsent,
+		)
 	}
 
 	err = invitations.MarkInvitationUsedTx(

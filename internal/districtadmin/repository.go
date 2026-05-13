@@ -15,8 +15,8 @@ func CreateDistrictAdminTx(
 	ctx context.Context,
 	tx pgx.Tx,
 	profileID string,
-	stateID *string,
-	districtID *string,
+	stateID *int,
+	districtID *int,
 	dpdpConsent bool,
 ) error {
 

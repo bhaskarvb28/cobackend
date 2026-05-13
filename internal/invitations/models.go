@@ -14,9 +14,9 @@ type Invitation struct {
 	Token  string
 	Status string
 
-	StateID    *string
-	DistrictID *string
-	AcademyID  *string
+	StateID    *int
+	DistrictID *int
+	AcademyID  *int
 
 	ExpiresAt time.Time
 }
