@@ -6,9 +6,7 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 CREATE TABLE roles (
     id SMALLSERIAL PRIMARY KEY,
-
     name VARCHAR(20) UNIQUE NOT NULL,
-
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -26,9 +24,7 @@ INSERT INTO roles (name) VALUES ('player');
 
 CREATE TABLE states (
     id SMALLSERIAL PRIMARY KEY,
-
     name VARCHAR(100) UNIQUE NOT NULL,
-
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -148,6 +144,55 @@ VALUES (
 );
 
 --------------------------------------------------------------------------------------------------------------
+-- INVITATIONS
+--------------------------------------------------------------------------------------------------------------
+
+CREATE TABLE invitations (
+    id BIGSERIAL PRIMARY KEY,
+
+    email VARCHAR(50) NOT NULL,
+
+    role_id SMALLINT NOT NULL,
+
+    invited_by UUID NOT NULL,
+
+    token TEXT NOT NULL UNIQUE,
+
+    state_id SMALLINT,
+    district_id INT,
+    academy_id INT,
+
+    expires_at TIMESTAMP NOT NULL,
+
+    status VARCHAR(20) NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending', 'accepted')),
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_role
+        FOREIGN KEY (role_id)
+        REFERENCES roles(id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_invited_by
+        FOREIGN KEY (invited_by)
+        REFERENCES profiles(id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_state
+        FOREIGN KEY (state_id)
+        REFERENCES states(id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_district
+        FOREIGN KEY (district_id)
+        REFERENCES districts(id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT fk_academy
+        FOREIGN KEY (academy_id)
+
+--------------------------------------------------------------------------------------------------------------
 -- UPDATED_AT TRIGGER FUNCTION
 --------------------------------------------------------------------------------------------------------------
 
@@ -167,6 +212,9 @@ CREATE TRIGGER profiles_set_updated_at
 BEFORE UPDATE ON profiles
 FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column();
+        REFERENCES academies(id)
+        ON DELETE RESTRICT
+);
 
 --------------------------------------------------------------------------------------------------------------
 -- STATE ADMINS
@@ -304,54 +352,80 @@ FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column();
 
 --------------------------------------------------------------------------------------------------------------
--- INVITATIONS
+-- ACADEMIEc ADMIN
 --------------------------------------------------------------------------------------------------------------
 
-CREATE TABLE invitations (
-    id BIGSERIAL PRIMARY KEY,
+CREATE TABLE academy_admins (
 
-    email VARCHAR(50) NOT NULL,
+    profile_id UUID PRIMARY KEY,
 
-    role_id SMALLINT NOT NULL,
+    academy_id INT NOT NULL,
 
-    invited_by UUID NOT NULL,
+    gstin VARCHAR(15),
 
-    token TEXT NOT NULL UNIQUE,
+    registration_proof TEXT,
 
-    state_id SMALLINT,
-    district_id INT,
-    academy_id INT,
+    dpdp_consent BOOLEAN NOT NULL DEFAULT FALSE,
 
-    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    status VARCHAR(20) NOT NULL DEFAULT 'pending'
-        CHECK (status IN ('pending', 'accepted')),
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_role
-        FOREIGN KEY (role_id)
-        REFERENCES roles(id)
-        ON DELETE RESTRICT,
-
-    CONSTRAINT fk_invited_by
-        FOREIGN KEY (invited_by)
+    CONSTRAINT fk_profile
+        FOREIGN KEY (profile_id)
         REFERENCES profiles(id)
-        ON DELETE CASCADE,
-
-    CONSTRAINT fk_state
-        FOREIGN KEY (state_id)
-        REFERENCES states(id)
-        ON DELETE RESTRICT,
-
-    CONSTRAINT fk_district
-        FOREIGN KEY (district_id)
-        REFERENCES districts(id)
-        ON DELETE RESTRICT,
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
 
     CONSTRAINT fk_academy
         FOREIGN KEY (academy_id)
         REFERENCES academies(id)
         ON DELETE RESTRICT
+        ON UPDATE CASCADE
 );
+
+--------------------------------------------------------------------------------------------------------------
+-- ACADEMY COACHES
+--------------------------------------------------------------------------------------------------------------
+
+CREATE TABLE academy_coaches (
+    -- Academy Connection
+    academy_id INT PRIMARY KEY,
+
+    disciplines_specialized TEXT[] NOT NULL,
+
+    coaching_credentials_proof TEXT NOT NULL,
+
+    -- DPDP
+    dpdp_consent BOOLEAN NOT NULL DEFAULT FALSE,
+
+    assigned_disciplines INT NOT NULL,
+    approval_notes TEXT,
+
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    -- FK: academy
+    CONSTRAINT fk_academy
+        FOREIGN KEY (academy_id)
+        REFERENCES academics(academy_id)
+        ON DELETE RESTRICT
+        ON UPDATE cascade,
+
+    CONSTRAINT fk_weapon_category
+        FOREIGN KEY (assigned_disciplines)
+        REFERENCES weapon_category(category_id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+    -- Approval notes mandatory for rejection/more info
+    CONSTRAINT check_approval_notes
+        CHECK (
+            approval_status NOT IN ('rejected', 'more_info_required')
+            OR (
+                approval_notes IS NOT NULL
+                AND LENGTH(approval_notes) BETWEEN 10 AND 500
+            )
+        )
+);
+
 

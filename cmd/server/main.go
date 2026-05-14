@@ -2,10 +2,12 @@ package main
 
 import (
 	"cobackend/internal/academy"
+	"cobackend/internal/academyAdmin"
 	"cobackend/internal/auth"
 	"cobackend/internal/db"
 	"cobackend/internal/districtCoach"
 	"cobackend/internal/districts"
+	"cobackend/internal/invitations"
 	"cobackend/internal/states"
 
 	"cobackend/internal/districtadmin"
@@ -45,7 +47,10 @@ func main() {
 		districtCoach.RegisterRoutes(r)
 
 		academy.RegisterRoutes(r)
+		invitations.RegisterRoutes(r)
+		academyAdmin.RegisterRoutes(r)
 	})
+
 
 	
 	log.Println("Server running on :" + port)

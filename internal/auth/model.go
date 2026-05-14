@@ -35,13 +35,10 @@ type AcceptInvitationInput struct {
 	ContactNumber string `json:"contact_number"`
 
 	DPDPConsent bool `json:"dpdp_consent,omitempty"`
-	CoachCode                string `json:"coach_code"`
-	CoachingCertificateProof string `json:"coaching_certificate_proof"`
 
+	CoachCode                string `json:"coach_code,omitempty"`
+	CoachingCertificateProof string `json:"coaching_certificate_proof,omitempty"`
 
-	// Specialization string `json:"specialization,omitempty"`
-
-	// DateOfBirth string `json:"date_of_birth,omitempty"`
-
-	// Gender string `json:"gender,omitempty"`
+	GSTIN              string `json:"gstin,omitempty"`
+	RegistrationProof  string `json:"registration_proof,omitempty"`
 }

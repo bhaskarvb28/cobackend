@@ -14,6 +14,7 @@ import (
 	"cobackend/internal/utils"
 	"cobackend/internal/validation"
 	"cobackend/internal/districtCoach"
+	"cobackend/internal/academyAdmin"
 
 	"github.com/jackc/pgx/v5"
 
@@ -273,6 +274,32 @@ func AcceptInvitationService(
 			input.CoachingCertificateProof,
 			input.DPDPConsent,
 		)
+
+	case "academy_admin":
+		if !input.DPDPConsent {
+			return shared.NewAPIError(
+				http.StatusBadRequest,
+				"dpdp consent is required",
+			)
+		}
+
+		if input.RegistrationProof == "" {
+			return shared.NewAPIError(
+				http.StatusBadRequest,
+				"registration proof is required",
+			)
+		}
+
+		err = academyAdmin.CreateAcademyAdminTx(
+			ctx,
+			tx,
+			profileID,
+			invitation.AcademyID,
+			input.GSTIN,
+			input.RegistrationProof,
+			input.DPDPConsent,
+		)
+
 	}
 
 	err = invitations.MarkInvitationUsedTx(
