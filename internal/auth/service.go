@@ -4,13 +4,13 @@ import (
 	"context"
 	"errors"
 
-	"cobackend/internal/districtadmin"
+	"cobackend/internal/districtAdmin"
 	"cobackend/internal/invitations"
 	"cobackend/internal/jwt"
 	"cobackend/internal/profiles"
 	"cobackend/internal/roles"
 	"cobackend/internal/shared"
-	"cobackend/internal/stateadmin"
+	"cobackend/internal/stateAdmin"
 	"cobackend/internal/utils"
 	"cobackend/internal/validation"
 	"cobackend/internal/districtCoach"
@@ -202,7 +202,7 @@ func AcceptInvitationService(
 
 	case "state_admin":
 
-		err = stateadmin.CreateStateAdminTx(
+		err = stateAdmin.CreateStateAdminTx(
 			ctx,
 			tx,
 			profileID,
@@ -225,7 +225,7 @@ func AcceptInvitationService(
 			)
 		}
 
-		err = districtadmin.CreateDistrictAdminTx(
+		err = districtAdmin.CreateDistrictAdminTx(
 			ctx,
 			tx,
 			profileID,

@@ -1,4 +1,4 @@
-package stateadmin
+package stateAdmin
 
 var AllowedStateAdminSortFields = map[string]bool{
 	"first_name": true,

@@ -1,14 +1,18 @@
-package districtadmin
+package districtAdmin
 
 import (
 	"context"
+	"errors"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"math"
 	"strconv"
 
 	"cobackend/internal/db"
+	"cobackend/internal/shared"
+
 )
 
 func CreateDistrictAdminTx(
@@ -208,208 +212,88 @@ func GetDistrictAdminsRepository(
 	}, nil
 }
 
-// import (
-// 	"context"
-// 	"errors"
-// 	"strconv"
+// ─────────────────────────────────────────────────────────────────────────────
+// NEW — GetDistrictAdminStateID
+// Fetches which state the district admin belongs to.
+// Used to verify the state admin is deleting someone in their own state.
+// ─────────────────────────────────────────────────────────────────────────────
 
-// 	"cobackend/internal/db"
+func GetDistrictAdminStateID(
+	ctx context.Context,
+	profileID string,
+) (int, error) {
 
-// 	"github.com/google/uuid"
-// 	"github.com/jackc/pgx/v5/pgconn"
-// )
+	var stateID int
 
-// func CreateDistrictAdminRepository(
-// 	ctx context.Context,
-// 	input CreateDistrictAdminInput,
-// 	hashedPassword string,
-// ) error {
+	err := db.DB.QueryRow(
+		ctx,
+		`
+		SELECT state_id
+		FROM district_admins
+		WHERE profile_id = $1
+		`,
+		profileID,
+	).Scan(&stateID)
 
-// 	tx, err := db.DB.Begin(ctx)
-// 	if err != nil {
-// 		return errors.New("failed to start database transaction")
-// 	}
-// 	defer tx.Rollback(ctx)
+	if err != nil {
+		return 0, err
+	}
 
-// 	var districtAdminRoleID string
-// 	err = tx.QueryRow(
-// 		ctx,
-// 		`SELECT role_id FROM roles WHERE role_name = 'district_admin'`,
-// 	).Scan(&districtAdminRoleID)
-// 	if err != nil {
-// 		return errors.New("failed to fetch district admin role")
-// 	}
-
-// 	profileID := uuid.New()
-
-// 	_, err = tx.Exec(
-// 		ctx,
-// 		`
-// 		INSERT INTO profiles (
-// 			id,
-// 			first_name,
-// 			last_name,
-// 			email,
-// 			password,
-// 			contact_number,
-// 			role_id
-// 		)
-// 		VALUES ($1, $2, $3, $4, $5, $6, $7)
-// 		`,
-// 		profileID,
-// 		input.FirstName,
-// 		input.LastName,
-// 		input.Email,
-// 		hashedPassword,
-// 		input.ContactNumber,
-// 		districtAdminRoleID,
-// 	)
-
-// 	if err != nil {
-// 		var pgErr *pgconn.PgError
-// 		if errors.As(err, &pgErr) {
-// 			switch pgErr.Code {
-// 			case "23505":
-// 				if pgErr.ConstraintName == "profiles_email_key" {
-// 					return errors.New("email already exists")
-// 				}
-// 				return errors.New("duplicate value already exists")
-// 			case "23503":
-// 				return errors.New("invalid foreign key reference")
-// 			case "23502":
-// 				return errors.New("required field is missing")
-// 			case "42P01":
-// 				return errors.New("required database table does not exist")
-// 			case "42703":
-// 				return errors.New("required database column does not exist")
-// 			default:
-// 				return errors.New("database operation failed")
-// 			}
-// 		}
-// 		return errors.New("failed to create profile")
-// 	}
-
-// 	_, err = tx.Exec(
-// 		ctx,
-// 		`
-// 		INSERT INTO district_admins (
-// 			profile_id,
-// 			state_id,
-// 			district_id
-// 		)
-// 		VALUES ($1, $2, $3)
-// 		`,
-// 		profileID,
-// 		input.StateID,
-// 		input.DistrictID,
-// 	)
-
-// 	if err != nil {
-// 		var pgErr *pgconn.PgError
-// 		if errors.As(err, &pgErr) {
-// 			switch pgErr.Code {
-// 			case "23503":
-// 				return errors.New("invalid state or district id")
-// 			case "23505":
-// 				return errors.New("district admin already exists")
-// 			case "23502":
-// 				return errors.New("state and district are required")
-// 			case "42P01":
-// 				return errors.New("required database table does not exist")
-// 			default:
-// 				return errors.New("failed to assign district admin")
-// 			}
-// 		}
-// 		return errors.New("failed to create district admin")
-// 	}
-
-// 	err = tx.Commit(ctx)
-// 	if err != nil {
-// 		return errors.New("failed to commit database transaction")
-// 	}
-
-// 	return nil
-// }
+	return stateID, nil
+}
 
 
 
-// func UpdateDistrictAdminRepository(
-// 	ctx context.Context,
-// 	id string,
-// 	input UpdateDistrictAdminInput,
-// ) error {
+// ─────────────────────────────────────────────────────────────────────────────
+// NEW — DeleteDistrictAdminRepository
+// Deletes the profile row. Because district_admins has
+// ON DELETE CASCADE → profiles, the district_admins row
+// is removed automatically.
+// ─────────────────────────────────────────────────────────────────────────────
 
-// 	_, err := db.DB.Exec(
-// 		ctx,
-// 		`
-// 		UPDATE district_admins
-// 		SET
-// 			state_id        = $1,
-// 			district_id     = $2,
-// 			approval_status = $3,
-// 			approval_notes  = $4,
-// 			updated_at      = CURRENT_TIMESTAMP
-// 		WHERE profile_id = $5
-// 		`,
-// 		input.StateID,
-// 		input.DistrictID,
-// 		input.ApprovalStatus,
-// 		input.ApprovalNotes,
-// 		id,
-// 	)
+func DeleteDistrictAdminRepository(
+	ctx context.Context,
+	profileID string,
+) error {
 
-// 	if err != nil {
-// 		var pgErr *pgconn.PgError
-// 		if errors.As(err, &pgErr) {
-// 			switch pgErr.Code {
-// 			case "23503":
-// 				return errors.New("invalid state or district id")
-// 			case "23514":
-// 				return errors.New("invalid approval status or missing rejection notes")
-// 			case "42P01":
-// 				return errors.New("required database table does not exist")
-// 			default:
-// 				return errors.New("failed to update district admin")
-// 			}
-// 		}
-// 		return errors.New("database operation failed")
-// 	}
+	commandTag, err := db.DB.Exec(
+		ctx,
+		`
+		DELETE FROM profiles
+		WHERE id = $1
+		`,
+		profileID,
+	)
 
-// 	return nil
-// }
+	if err != nil {
 
-// func DeleteDistrictAdminRepository(
-// 	ctx context.Context,
-// 	id string,
-// ) error {
+		var pgErr *pgconn.PgError
 
-// 	commandTag, err := db.DB.Exec(
-// 		ctx,
-// 		`
-// 		DELETE FROM profiles
-// 		WHERE id = $1
-// 		`,
-// 		id,
-// 	)
+		if errors.As(err, &pgErr) {
 
-// 	if err != nil {
-// 		var pgErr *pgconn.PgError
-// 		if errors.As(err, &pgErr) {
-// 			switch pgErr.Code {
-// 			case "22P02":
-// 				return errors.New("invalid district admin id")
-// 			case "42P01":
-// 				return errors.New("required database table does not exist")
-// 			default:
-// 				return errors.New("failed to delete district admin")
-// 			}
-// 		}
-// 		return errors.New("database operation failed")
-// 	}
+			switch pgErr.Code {
 
-// 	if commandTag.RowsAffected() == 0 {
-// 		return errors.New("district admin not found")
-// 	}
+			// invalid UUID format passed to Postgres
+			case "22P02":
+				return shared.ErrInvalidUUID
 
-// 	return nil
-// }
+			// table missing (should never happen in prod)
+			case "42P01":
+				return errors.New("required database table does not exist")
+
+			default:
+				return errors.New("failed to delete district admin")
+			}
+		}
+
+		return errors.New("database operation failed")
+	}
+
+	// 0 rows affected means no district admin with this profileID exists
+	if commandTag.RowsAffected() == 0 {
+		return shared.ErrDistrictAdminNotFound
+	}
+
+	return nil
+}
+

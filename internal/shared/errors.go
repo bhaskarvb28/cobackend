@@ -37,6 +37,11 @@ var (
 		"invalid id",
 	)
 
+
+	ErrForbiddenDistrict = errors.New(
+		"you are not authorized to manage this district admin",
+	)
+
 	// Business Errors
 	ErrEmailExists = errors.New(
 		"email already exists",
@@ -58,5 +63,13 @@ var (
 	ErrProfileAlreadyExists = errors.New(
 		"profile with this email already exists",
 	)
-)
 
+	ErrDistrictAdminNotFound = errors.New(
+		"district admin not found",
+	)
+
+
+	ErrDistrictCoachNotFound = errors.New(
+		"district coach Not found",
+	)
+)

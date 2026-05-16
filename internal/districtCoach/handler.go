@@ -8,6 +8,8 @@ import (
 	"cobackend/internal/shared"
 
 	"cobackend/internal/middleware"
+	"github.com/go-chi/chi/v5"
+	"cobackend/internal/validation"
 
 	"errors"
 
@@ -274,4 +276,64 @@ func GetDistrictCoachesHandler(
 			Data:    result,
 		},
 	)
+}
+
+func DeleteDistrictCoachHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	districtCoachProfileID := chi.URLParam(r, "profile_id")
+
+	if districtCoachProfileID == "" {
+		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
+			Success: false,
+			Message: "district coach id is required",
+		})
+		return
+	}
+
+	if !validation.IsValidUUID(districtCoachProfileID) {
+		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
+			Success: false,
+			Message: shared.ErrInvalidUUID.Error(),
+		})
+		return
+	}
+
+	// logged in state admin id from middleware/context
+	stateAdminProfileID := r.Context().
+		Value(middleware.UserIDKey).
+		(string)
+
+	err := DeleteDistrictCoachService(
+		r.Context(),
+		stateAdminProfileID,
+		districtCoachProfileID,
+	)
+
+	if err != nil {
+
+		statusCode := http.StatusInternalServerError
+
+		switch {
+
+		case errors.Is(err, shared.ErrDistrictCoachNotFound):
+			statusCode = http.StatusNotFound
+
+		case errors.Is(err, shared.ErrUnauthorized):
+			statusCode = http.StatusForbidden
+		}
+
+		utils.WriteJSON(w, statusCode, shared.APIResponse{
+			Success: false,
+			Message: "Internal Server Error",
+		})
+		return
+	}
+
+	utils.WriteJSON(w, http.StatusOK, shared.APIResponse{
+		Success: true,
+		Message: "district coach deleted successfully",
+	})
 }

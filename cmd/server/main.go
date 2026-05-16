@@ -10,8 +10,8 @@ import (
 	"cobackend/internal/invitations"
 	"cobackend/internal/states"
 
-	"cobackend/internal/districtadmin"
-	"cobackend/internal/stateadmin"
+	"cobackend/internal/districtAdmin"
+	"cobackend/internal/stateAdmin"
 
 	"log"
 	"net/http"
@@ -42,8 +42,8 @@ func main() {
 		states.RegisterRoutes(r)
 		districts.RegisterRoutes(r)
 
-		stateadmin.RegisterRoutes(r)
-		districtadmin.RegisterRoutes(r)
+		stateAdmin.RegisterRoutes(r)
+		districtAdmin.RegisterRoutes(r)
 		districtCoach.RegisterRoutes(r)
 
 		academy.RegisterRoutes(r)

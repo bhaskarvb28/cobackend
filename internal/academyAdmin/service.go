@@ -2,23 +2,21 @@ package academyAdmin
 
 import (
 	"context"
-	"strings"
-
-	"cobackend/internal/shared"
-	"cobackend/internal/validation"
-	"cobackend/internal/districts"
-	"cobackend/internal/profiles"
-	"cobackend/internal/invitations"
-	"cobackend/internal/roles"
-	"cobackend/internal/mail"
-
-	"net/http"
 	"crypto/rand"
 	"encoding/hex"
-	"time"
-	"os"
 	"fmt"
+	"net/http"
+	"os"
+	"strings"
+	"time"
 
+	"cobackend/internal/districts"
+	"cobackend/internal/invitations"
+	"cobackend/internal/mail"
+	"cobackend/internal/profiles"
+	"cobackend/internal/roles"
+	"cobackend/internal/shared"
+	"cobackend/internal/validation"
 )
 
 func InviteAcademyAdminService(
@@ -158,4 +156,20 @@ func InviteAcademyAdminService(
 
 	return inviteLink, nil
 
+}
+
+func GetAcademyAdminsService(
+	ctx context.Context,
+	query GetAcademyAdminsQuery,
+) (PaginatedAcademyAdmins, error) {
+
+	return GetAcademyAdminsRepository(ctx, query)
+}
+
+func GetAcademyAdminByIDService(
+	ctx context.Context,
+	profileID string,
+) (AcademyAdmin, error) {
+
+	return GetAcademyAdminByIDRepository(ctx, profileID)
 }

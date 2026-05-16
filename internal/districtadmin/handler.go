@@ -1,4 +1,4 @@
-package districtadmin
+package districtAdmin
 
 import (
 	"encoding/json"
@@ -14,7 +14,8 @@ import (
 	"strconv"
 	"strings"
 
-	// "github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5"
+	"cobackend/internal/validation"
 	// "github.com/google/uuid"
 )
 
@@ -276,51 +277,96 @@ func GetDistrictAdminsHandler(
 	)
 }
 
-// func UpdateDistrictAdminHandler(w http.ResponseWriter, r *http.Request) {
-// 	id := chi.URLParam(r, "id")
+// ─────────────────────────────────────────────────────────────────────────────
+// DeleteDistrictAdminHandler
+//
+// DELETE /api/v1/district-admins/{profile_id}
+// Access: state_admin only (enforced by RequireRole middleware in routes.go)
+//
+// Flow:
+//   1. Read profile_id from URL
+//   2. Validate it is a proper UUID
+//   3. Read logged-in state admin's id from JWT context
+//   4. Call DeleteDistrictAdminService (state ownership check + delete)
+//   5. Return 200 OK on success
+// ─────────────────────────────────────────────────────────────────────────────
 
-// 	_, err := uuid.Parse(id)
-// 	if err != nil {
-// 		http.Error(w, "Invalid district admin id", http.StatusBadRequest)
-// 		return
-// 	}
+func DeleteDistrictAdminHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
 
-// 	var input UpdateDistrictAdminInput
-// 	err = json.NewDecoder(r.Body).Decode(&input)
-// 	if err != nil {
-// 		http.Error(w, "Invalid request body", http.StatusBadRequest)
-// 		return
-// 	}
+	// 1. Get profile_id from URL: /district-admins/{profile_id}
+	profileID := chi.URLParam(r, "profile_id")
 
-// 	err = UpdateDistrictAdminService(r.Context(), id, input)
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusBadRequest)
-// 		return
-// 	}
+	if profileID == "" {
+		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
+			Success: false,
+			Message: "district admin id is required",
+		})
+		return
+	}
 
-// 	w.Header().Set("Content-Type", "application/json")
-// 	json.NewEncoder(w).Encode(map[string]string{
-// 		"message": "District admin updated successfully",
-// 	})
-// }
+	// 2. Validate UUID format before hitting the database
+	if !validation.IsValidUUID(profileID) {
+		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
+			Success: false,
+			Message: shared.ErrInvalidUUID.Error(),
+		})
+		return
+	}
 
-// func DeleteDistrictAdminHandler(w http.ResponseWriter, r *http.Request) {
-// 	id := chi.URLParam(r, "id")
+	// 3. Get the logged-in state admin's profile_id from the JWT context
+	authUserID, ok := r.Context().
+		Value(middleware.UserIDKey).
+		(string)
 
-// 	_, err := uuid.Parse(id)
-// 	if err != nil {
-// 		http.Error(w, "Invalid district admin id", http.StatusBadRequest)
-// 		return
-// 	}
+	if !ok {
+		utils.WriteJSON(w, http.StatusUnauthorized, shared.APIResponse{
+			Success: false,
+			Message: "unauthorized",
+		})
+		return
+	}
 
-// 	err = DeleteDistrictAdminService(r.Context(), id)
-// 	if err != nil {
-// 		http.Error(w, err.Error(), http.StatusBadRequest)
-// 		return
-// 	}
+	// 4. Call service: verifies state ownership then deletes
+	err := DeleteDistrictAdminService(
+		r.Context(),
+		authUserID,
+		profileID,
+	)
 
-// 	w.Header().Set("Content-Type", "application/json")
-// 	json.NewEncoder(w).Encode(map[string]string{
-// 		"message": "District admin deleted successfully",
-// 	})
-// }
+	if err != nil {
+
+		// Structured API errors (include HTTP status code)
+		var apiErr *shared.APIError
+
+		if errors.As(err, &apiErr) {
+			utils.WriteJSON(w, apiErr.StatusCode, shared.APIResponse{
+				Success: false,
+				Message: apiErr.Message,
+			})
+			return
+		}
+
+		// Sentinel errors (plain errors.New)
+		statusCode := http.StatusInternalServerError
+
+		if errors.Is(err, shared.ErrDistrictAdminNotFound) {
+			statusCode = http.StatusNotFound
+		}
+
+		utils.WriteJSON(w, statusCode, shared.APIResponse{
+			Success: false,
+			Message: err.Error(),
+		})
+		return
+	}
+
+	// 5. Success
+	utils.WriteJSON(w, http.StatusOK, shared.APIResponse{
+		Success: true,
+		Message: "district admin deleted successfully",
+	})
+}
+

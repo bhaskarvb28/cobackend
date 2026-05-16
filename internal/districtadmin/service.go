@@ -1,4 +1,4 @@
-package districtadmin
+package districtAdmin
 
 import (
 	"context"
@@ -14,6 +14,7 @@ import (
 	"cobackend/internal/invitations"
 	"cobackend/internal/profiles"
 	"cobackend/internal/roles"
+	"cobackend/internal/stateAdmin"
 
 	"crypto/rand"
 	"encoding/hex"
@@ -24,6 +25,9 @@ import (
 	"fmt"
 
 	"cobackend/internal/mail"
+	"errors"
+
+	"github.com/jackc/pgx/v5"
 
 	// "golang.org/x/crypto/bcrypt"
 )
@@ -183,6 +187,59 @@ func GetDistrictAdminsService(
 // 	return UpdateDistrictAdminRepository(ctx, id, input)
 // }
 
+
+
 // func DeleteDistrictAdminService(ctx context.Context, id string) error {
 // 	return DeleteDistrictAdminRepository(ctx, id)
 // }
+
+
+func DeleteDistrictAdminService(
+	ctx context.Context,
+	authUserID string,
+	profileID string,
+) error {
+
+	// Step 1: Find which state the district admin belongs to
+	districtAdminStateID, err := GetDistrictAdminStateID(
+		ctx,
+		profileID,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return shared.ErrDistrictAdminNotFound
+		}
+		return shared.NewAPIError(
+			http.StatusInternalServerError,
+			"failed to fetch district admin",
+		)
+	}
+
+	// Step 2: Find which state the logged-in state admin manages
+	stateAdminStateID, err := stateAdmin.GetStateAdminStateID(
+		ctx,
+		authUserID,
+	)
+
+	if err != nil {
+		return shared.NewAPIError(
+			http.StatusInternalServerError,
+			"failed to fetch state admin details",
+		)
+	}
+
+	// Step 3: State admin can only delete district admins in their own state
+	if stateAdminStateID != districtAdminStateID {
+		return shared.NewAPIError(
+			http.StatusForbidden,
+			shared.ErrForbiddenDistrict.Error(),
+		)
+	}
+
+	// Step 4: Delete the profile (district_admins row auto-removed via CASCADE)
+	return DeleteDistrictAdminRepository(
+		ctx,
+		profileID,
+	)
+}

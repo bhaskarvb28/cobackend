@@ -2,14 +2,18 @@ package academyAdmin
 
 import (
 	"encoding/json"
-	"net/http"
-
-	"cobackend/internal/utils"
-	"cobackend/internal/middleware"
-	"cobackend/internal/shared"
-
 	"errors"
 	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
+
+	"cobackend/internal/middleware"
+	"cobackend/internal/shared"
+	"cobackend/internal/utils"
+	"cobackend/internal/validation"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func InviteAcademyAdminHandler(w http.ResponseWriter, r *http.Request) {
@@ -86,4 +90,260 @@ func InviteAcademyAdminHandler(w http.ResponseWriter, r *http.Request) {
 		Data: inviteLink,
 	})
 
+}
+
+
+func GetAcademyAdminsHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	pageStr := r.URL.Query().Get("page")
+	limitStr := r.URL.Query().Get("limit")
+	search := strings.TrimSpace(
+		r.URL.Query().Get("search"),
+	)
+	stateStr := r.URL.Query().Get("state_id")
+	districtStr := r.URL.Query().Get("district_id")
+	academyStr := r.URL.Query().Get("academy_id")
+	sortBy := r.URL.Query().Get("sort_by")
+	orderBy := r.URL.Query().Get("order_by")
+
+	page := 1
+	if pageStr != "" {
+
+		parsed, err := strconv.Atoi(pageStr)
+		if err != nil || parsed < 1 {
+
+			utils.WriteJSON(
+				w,
+				http.StatusBadRequest,
+				shared.APIResponse{
+					Success: false,
+					Message: "invalid page",
+				},
+			)
+
+			return
+		}
+
+		page = parsed
+	}
+
+	limit := 10
+	if limitStr != "" {
+
+		if limitStr == "all" {
+
+			limit = 0
+
+		} else {
+
+			parsed, err := strconv.Atoi(limitStr)
+			if err != nil || parsed < 1 {
+
+				utils.WriteJSON(
+					w,
+					http.StatusBadRequest,
+					shared.APIResponse{
+						Success: false,
+						Message: "invalid limit",
+					},
+				)
+
+				return
+			}
+
+			limit = parsed
+		}
+	}
+
+	stateID := 0
+	if stateStr != "" {
+
+		parsed, err := strconv.Atoi(stateStr)
+		if err != nil {
+
+			utils.WriteJSON(
+				w,
+				http.StatusBadRequest,
+				shared.APIResponse{
+					Success: false,
+					Message: "invalid state_id",
+				},
+			)
+
+			return
+		}
+
+		stateID = parsed
+	}
+
+	districtID := 0
+	if districtStr != "" {
+
+		parsed, err := strconv.Atoi(districtStr)
+		if err != nil {
+
+			utils.WriteJSON(
+				w,
+				http.StatusBadRequest,
+				shared.APIResponse{
+					Success: false,
+					Message: "invalid district_id",
+				},
+			)
+
+			return
+		}
+
+		districtID = parsed
+	}
+
+	academyID := 0
+	if academyStr != "" {
+
+		parsed, err := strconv.Atoi(academyStr)
+		if err != nil {
+
+			utils.WriteJSON(
+				w,
+				http.StatusBadRequest,
+				shared.APIResponse{
+					Success: false,
+					Message: "invalid academy_id",
+				},
+			)
+
+			return
+		}
+
+		academyID = parsed
+	}
+
+	if sortBy == "" {
+		sortBy = "first_name"
+	}
+
+	if orderBy == "" {
+		orderBy = "asc"
+	}
+
+	_, exists := AllowedAcademyAdminSortFields[sortBy]
+
+	if !exists {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "invalid sort_by field",
+			},
+		)
+
+		return
+	}
+
+	orderBy = strings.ToUpper(orderBy)
+
+	if orderBy != "ASC" && orderBy != "DESC" {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "invalid order_by value",
+			},
+		)
+
+		return
+	}
+
+	query := GetAcademyAdminsQuery{
+		Page:       page,
+		Limit:      limit,
+		Search:     search,
+		StateID:    stateID,
+		DistrictID: districtID,
+		AcademyID:  academyID,
+		SortBy:     sortBy,
+		OrderBy:    orderBy,
+	}
+
+	result, err := GetAcademyAdminsService(
+		r.Context(),
+		query,
+	)
+
+	if err != nil {
+		fmt.Print(err)
+
+		utils.WriteError(
+			w,
+			err,
+			"failed to fetch academy admins",
+		)
+
+		return
+	}
+
+	utils.WriteJSON(
+		w,
+		http.StatusOK,
+		shared.APIResponse{
+			Success: true,
+			Message: "academy admins fetched successfully",
+			Data:    result,
+		},
+	)
+}
+
+func GetAcademyAdminByIDHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	profileID := chi.URLParam(r, "profile_id")
+
+	if profileID == "" {
+		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
+			Success: false,
+			Message: "profile_id is required",
+		})
+		return
+	}
+
+	if !validation.IsValidUUID(profileID) {
+		utils.WriteJSON(w, http.StatusBadRequest, shared.APIResponse{
+			Success: false,
+			Message: "invalid profile_id",
+		})
+		return
+	}
+
+	admin, err := GetAcademyAdminByIDService(
+		r.Context(),
+		profileID,
+	)
+
+	if err != nil {
+		utils.WriteError(
+			w,
+			err,
+			"failed to fetch academy admin",
+		)
+		return
+	}
+
+	utils.WriteJSON(
+		w,
+		http.StatusOK,
+		shared.APIResponse{
+			Success: true,
+			Message: "academy admin fetched successfully",
+			Data:    admin,
+		},
+	)
 }

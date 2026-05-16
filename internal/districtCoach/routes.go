@@ -18,6 +18,8 @@ func RegisterRoutes(r chi.Router) {
 
 			r.Get("/", GetDistrictCoachesHandler)
 
+			r.Delete("/{profile_id}", DeleteDistrictCoachHandler)
+
 
 		})
 	})

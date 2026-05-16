@@ -1,4 +1,4 @@
-package stateadmin
+package stateAdmin
 
 import (
 	"cobackend/internal/middleware"

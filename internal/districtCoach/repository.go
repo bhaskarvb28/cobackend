@@ -8,6 +8,10 @@ import (
 	"strconv"
 
 	"cobackend/internal/db"
+	"cobackend/internal/shared"
+
+	"errors"
+
 )
 
 func CreateDistrictCoachTx(
@@ -214,4 +218,68 @@ func GetDistrictCoachesRepository(
 		HasNext:     query.Page < totalPages,
 		HasPrevious: query.Page > 1,
 	}, nil
+}
+
+
+func GetDistrictCoachByProfileID(
+	ctx context.Context,
+	profileID string,
+) (DistrictCoach, error) {
+
+	var districtCoach DistrictCoach
+
+	err := db.DB.QueryRow(
+		ctx,
+		`
+		SELECT
+			dc.profile_id,
+			dc.district_id,
+			d.state_id
+		FROM district_coaches dc
+		INNER JOIN districts d
+			ON d.id = dc.district_id
+		WHERE dc.profile_id = $1
+		`,
+		profileID,
+	).Scan(
+		&districtCoach.ID,
+		&districtCoach.DistrictID,
+		&districtCoach.StateID,
+	)
+
+	if err != nil {
+
+		if errors.Is(err, pgx.ErrNoRows) {
+			return DistrictCoach{}, shared.ErrDistrictCoachNotFound
+		}
+
+		return DistrictCoach{}, err
+	}
+
+	return districtCoach, nil
+}
+
+func DeleteDistrictCoachRepository(
+	ctx context.Context,
+	profileID string,
+) error {
+
+	commandTag, err := db.DB.Exec(
+		ctx,
+		`
+		DELETE FROM profiles
+		WHERE id = $1
+		`,
+		profileID,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	if commandTag.RowsAffected() == 0 {
+		return shared.ErrDistrictCoachNotFound
+	}
+
+	return nil
 }

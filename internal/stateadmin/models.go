@@ -1,4 +1,4 @@
-package stateadmin
+package stateAdmin
 
 type InviteStateAdminInput struct {
 	Email           string `json:"email"`

@@ -28,6 +28,8 @@ import (
 	"fmt"
 
 	"cobackend/internal/mail"
+
+	"cobackend/internal/stateAdmin"
 )
 
 func InviteDistrictCoachService(
@@ -172,5 +174,48 @@ func GetDistrictCoachesService(
 	return GetDistrictCoachesRepository(
 		ctx,
 		query,
+	)
+}
+
+func DeleteDistrictCoachService(
+	ctx context.Context,
+	stateAdminProfileID string,
+	districtCoachProfileID string,
+) error {
+
+	// get state admin assigned state
+	assignedStateID, err := stateAdmin.GetAssignedStateByStateAdmin(
+		ctx,
+		stateAdminProfileID,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	// get district coach
+	districtCoach, err := GetDistrictCoachByProfileID(
+		ctx,
+		districtCoachProfileID,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	// check district coach exists
+	if districtCoach.ID == "" {
+		return shared.ErrDistrictCoachNotFound
+	}
+
+	// verify district belongs to same state
+	if districtCoach.StateID != assignedStateID {
+		return shared.ErrUnauthorized
+	}
+
+	// delete district coach
+	return DeleteDistrictCoachRepository(
+		ctx,
+		districtCoachProfileID,
 	)
 }

@@ -1,4 +1,4 @@
-package districtadmin
+package districtAdmin
 
 import (
 	"cobackend/internal/middleware"
@@ -21,9 +21,13 @@ func RegisterRoutes(r chi.Router) {
 
 			r.Get("/", GetDistrictAdminsHandler)
 
+			r.Delete("/{profile_id}", DeleteDistrictAdminHandler)
+
+
 			// r.Post("/", CreateDistrictAdminHandler)
 			// r.Put("/{id}", UpdateDistrictAdminHandler)
-			// r.Delete("/{id}", DeleteDistrictAdminHandler)
 		})
 	})
 }
+
+

@@ -12,3 +12,14 @@ func CreateAcademyService(
 		input,
 	)
 }
+
+func GetAcademiesService(
+	ctx context.Context,
+	query GetAcademiesQuery,
+) (PaginatedAcademies, error) {
+
+	return GetAcademiesRepository(
+		ctx,
+		query,
+	)
+}

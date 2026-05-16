@@ -1,4 +1,4 @@
-package districtadmin
+package districtAdmin
 
 type InviteDistrictAdminInput struct {
 	Email 		string `json:"email"`
@@ -37,22 +37,8 @@ type PaginatedDistrictAdmins struct {
 	HasPrevious  bool            `json:"has_previous"`
 }
 
-// type CreateDistrictAdminInput struct {
-// 	FirstName  string `json:"first_name"`
-// 	LastName   string `json:"last_name"`
-// 	Email      string `json:"email"`
-// 	Password   string `json:"password"`
-// 	ContactNumber string `json:"contact_number"`
-// 	StateID    int    `json:"state_id"`
-// 	DistrictID int    `json:"district_id"`
-// }
-
-// type UpdateDistrictAdminInput struct {
-// 	StateID    int    `json:"state_id"`
-// 	DistrictID int    `json:"district_id"`
-// 	ApprovalStatus string `json:"approval_status"`
-// 	ApprovalNotes  string `json:"approval_notes"`
-// }
-
-
+type UpdateDistrictAdminInput struct {
+	StateID        *int    `json:"state_id"`
+	DistrictID     *int    `json:"district_id"`
+}
 

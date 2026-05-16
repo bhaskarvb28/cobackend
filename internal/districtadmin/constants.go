@@ -1,4 +1,4 @@
-package districtadmin
+package districtAdmin
 
 var AllowedDistrictAdminSortFields = map[string]string{
 	"first_name":  "p.first_name",

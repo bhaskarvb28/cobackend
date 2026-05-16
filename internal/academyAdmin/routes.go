@@ -18,8 +18,8 @@ func RegisterRoutes(r chi.Router) {
 		})
 
 		r.Post("/invite", InviteAcademyAdminHandler)
+		r.Get("/", GetAcademyAdminsHandler)
+		r.Get("/{profile_id}", GetAcademyAdminByIDHandler)
+
 	})
 }
-
-
-
