@@ -18,5 +18,7 @@ type Invitation struct {
 	DistrictID *int
 	AcademyID  *int
 
+	DisciplinesSpecialized []int32
+
 	ExpiresAt time.Time
 }

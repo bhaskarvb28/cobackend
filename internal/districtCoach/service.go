@@ -126,6 +126,7 @@ func InviteDistrictCoachService(
 		&input.StateID,
 		&input.DistrictID,
 		nil,
+		nil,
 		expiresAt,
 	)
 

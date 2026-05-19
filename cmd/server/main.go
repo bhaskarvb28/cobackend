@@ -3,6 +3,7 @@ package main
 import (
 	"cobackend/internal/academy"
 	"cobackend/internal/academyAdmin"
+	"cobackend/internal/academyCoach"
 	"cobackend/internal/auth"
 	"cobackend/internal/db"
 	"cobackend/internal/districtCoach"
@@ -49,6 +50,8 @@ func main() {
 		academy.RegisterRoutes(r)
 		invitations.RegisterRoutes(r)
 		academyAdmin.RegisterRoutes(r)
+
+		academyCoach.RegisterRoutes(r)
 	})
 
 

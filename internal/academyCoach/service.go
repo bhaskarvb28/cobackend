@@ -1,4 +1,4 @@
-package academyAdmin
+package academyCoach
 
 import (
 	"context"
@@ -19,9 +19,9 @@ import (
 	"cobackend/internal/validation"
 )
 
-func InviteAcademyAdminService(
+func InviteAcademyCoachService(
 	ctx context.Context,
-	input InviteAcademyAdminInput,
+	input InviteAcademyCoachInput,
 	authUserID string,
 ) (string, error) {
 
@@ -82,7 +82,7 @@ func InviteAcademyAdminService(
 		)
 	}
 
-	roleID, err := roles.GetRoleIDByName(ctx, "academy_admin")
+	roleID, err := roles.GetRoleIDByName(ctx, "academy_coach")
 
 	if err != nil {
 		return "", err
@@ -118,7 +118,7 @@ func InviteAcademyAdminService(
 		&StateID,
 		&input.DistrictID,
 		&input.AcademyID,
-		nil,
+		input.DisciplinesSpecialized,
 		expiresAt,
 	)
 
@@ -134,7 +134,7 @@ func InviteAcademyAdminService(
 		token,
 	)
 
-	err = mail.SendAcademyAdminInvitationEmailBrevo(
+	err = mail.SendAcademyCoachInvitationEmailBrevo(
 		email,
 		inviteLink,
 	)
@@ -157,20 +157,4 @@ func InviteAcademyAdminService(
 
 	return inviteLink, nil
 
-}
-
-func GetAcademyAdminsService(
-	ctx context.Context,
-	query GetAcademyAdminsQuery,
-) (PaginatedAcademyAdmins, error) {
-
-	return GetAcademyAdminsRepository(ctx, query)
-}
-
-func GetAcademyAdminByIDService(
-	ctx context.Context,
-	profileID string,
-) (AcademyAdmin, error) {
-
-	return GetAcademyAdminByIDRepository(ctx, profileID)
 }

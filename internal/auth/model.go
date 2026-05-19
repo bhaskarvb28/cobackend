@@ -41,4 +41,6 @@ type AcceptInvitationInput struct {
 
 	GSTIN              string `json:"gstin,omitempty"`
 	RegistrationProof  string `json:"registration_proof,omitempty"`
+
+	CoachingCredentialsProof string `json:"coaching_credentials_proof"`
 }

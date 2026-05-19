@@ -73,6 +73,7 @@ func AcceptInviteHandler(
 	err := decoder.Decode(&input)
 
 	if err != nil {
+		fmt.Print(err)
 
 		utils.WriteJSON(
 			w,

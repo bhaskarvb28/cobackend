@@ -4,7 +4,10 @@ import (
 	"context"
 	"errors"
 
+	"cobackend/internal/academyAdmin"
+	"cobackend/internal/academyCoach"
 	"cobackend/internal/districtAdmin"
+	"cobackend/internal/districtCoach"
 	"cobackend/internal/invitations"
 	"cobackend/internal/jwt"
 	"cobackend/internal/profiles"
@@ -13,8 +16,6 @@ import (
 	"cobackend/internal/stateAdmin"
 	"cobackend/internal/utils"
 	"cobackend/internal/validation"
-	"cobackend/internal/districtCoach"
-	"cobackend/internal/academyAdmin"
 
 	"github.com/jackc/pgx/v5"
 
@@ -109,6 +110,8 @@ func AcceptInvitationService(
 			)
 		}
 
+		fmt.Println("GetInvitationByToken:", err)
+
 		return shared.NewAPIError(
 			http.StatusInternalServerError,
 			"failed to fetch invitation",
@@ -129,7 +132,6 @@ func AcceptInvitationService(
 		)
 	}
 
-
 	if !validation.IsStrongPassword(input.Password) {
 		return shared.NewAPIError(
 			http.StatusBadRequest,
@@ -142,6 +144,9 @@ func AcceptInvitationService(
 	)
 
 	if err != nil {
+
+		fmt.Println("HashPassword:", err)
+
 		return shared.NewAPIError(
 			http.StatusInternalServerError,
 			"failed to process password",
@@ -158,6 +163,9 @@ func AcceptInvitationService(
 	tx, err := db.DB.Begin(ctx)
 
 	if err != nil {
+
+		fmt.Println("Begin Transaction:", err)
+
 		return shared.NewAPIError(
 			http.StatusInternalServerError,
 			"failed to start transaction",
@@ -180,6 +188,9 @@ func AcceptInvitationService(
 	)
 
 	if err != nil {
+
+		fmt.Println("CreateProfileTx:", err)
+
 		return shared.NewAPIError(
 			http.StatusInternalServerError,
 			"failed to create profile",
@@ -192,6 +203,9 @@ func AcceptInvitationService(
 	)
 
 	if err != nil {
+
+		fmt.Println("GetRoleNameByID:", err)
+
 		return shared.NewAPIError(
 			http.StatusInternalServerError,
 			"failed to fetch role",
@@ -210,6 +224,9 @@ func AcceptInvitationService(
 		)
 
 		if err != nil {
+
+			fmt.Println("CreateStateAdminTx:", err)
+
 			return shared.NewAPIError(
 				http.StatusInternalServerError,
 				"failed to create state admin",
@@ -235,7 +252,9 @@ func AcceptInvitationService(
 		)
 
 		if err != nil {
-			fmt.Print(err)
+
+			fmt.Println("CreateDistrictAdminTx:", err)
+
 			return shared.NewAPIError(
 				http.StatusInternalServerError,
 				"failed to create district admin",
@@ -275,7 +294,18 @@ func AcceptInvitationService(
 			input.DPDPConsent,
 		)
 
+		if err != nil {
+
+			fmt.Println("CreateDistrictCoachTx:", err)
+
+			return shared.NewAPIError(
+				http.StatusInternalServerError,
+				"failed to create district coach",
+			)
+		}
+
 	case "academy_admin":
+
 		if !input.DPDPConsent {
 			return shared.NewAPIError(
 				http.StatusBadRequest,
@@ -300,6 +330,75 @@ func AcceptInvitationService(
 			input.DPDPConsent,
 		)
 
+		if err != nil {
+
+			fmt.Println("CreateAcademyAdminTx:", err)
+
+			return shared.NewAPIError(
+				http.StatusInternalServerError,
+				"failed to create academy admin",
+			)
+		}
+
+	case "academy_coach":
+
+		if !input.DPDPConsent {
+			return shared.NewAPIError(
+				http.StatusBadRequest,
+				"dpdp consent is required",
+			)
+		}
+
+		if input.CoachingCredentialsProof == "" {
+			return shared.NewAPIError(
+				http.StatusBadRequest,
+				"coaching credentials proof is required",
+			)
+		}
+
+		if invitation.AcademyID == nil {
+			return shared.NewAPIError(
+				http.StatusBadRequest,
+				"academy id is missing in invitation",
+			)
+		}
+
+		err = academyCoach.CreateAcademyCoachTx(
+			ctx,
+			tx,
+			profileID,
+			*invitation.AcademyID,
+			input.DPDPConsent,
+			input.CoachingCredentialsProof,
+		)
+
+		if err != nil {
+			return shared.NewAPIError(
+				http.StatusInternalServerError,
+				"failed to create academy coach",
+			)
+		}
+
+		for _, categoryID := range invitation.DisciplinesSpecialized {
+			err = academyCoach.AddAcademyCoachDisciplineTx(
+				ctx,
+				tx,
+				profileID,
+				categoryID,
+			)
+
+			if err != nil {
+				return shared.NewAPIError(
+					http.StatusInternalServerError,
+					"failed to assign disciplines",
+				)
+			}
+		}
+	default:
+		return shared.NewAPIError(
+			http.StatusBadRequest,
+			"invalid role",
+		)
 	}
 
 	err = invitations.MarkInvitationUsedTx(
@@ -318,6 +417,9 @@ func AcceptInvitationService(
 	err = tx.Commit(ctx)
 
 	if err != nil {
+
+		fmt.Println("Commit Transaction:", err)
+
 		return shared.NewAPIError(
 			http.StatusInternalServerError,
 			"failed to commit transaction",

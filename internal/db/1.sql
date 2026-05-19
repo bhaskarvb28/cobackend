@@ -133,7 +133,7 @@ INSERT INTO profiles (
 VALUES (
     'Bhaskar',
     'vb',
-    'bhaskarvb@gmail.com',
+    'bhaskarvb28@gmail.com',
     '$2a$10$NXPrHEt7doY0e2Y1FgyoX.YAwP81O3UGN8Kn1/8MPwPbWxu.sSl1K',
     '1234567890',
     (
@@ -158,6 +158,7 @@ CREATE TABLE invitations (
 
     token TEXT NOT NULL UNIQUE,
 
+    disciplines_specialized INT[],
     state_id SMALLINT,
     district_id INT,
     academy_id INT,
@@ -191,6 +192,7 @@ CREATE TABLE invitations (
 
     CONSTRAINT fk_academy
         FOREIGN KEY (academy_id)
+)
 
 --------------------------------------------------------------------------------------------------------------
 -- UPDATED_AT TRIGGER FUNCTION
@@ -385,47 +387,74 @@ CREATE TABLE academy_admins (
 );
 
 --------------------------------------------------------------------------------------------------------------
+-- Weapon category
+--------------------------------------------------------------------------------------------------------------
+
+CREATE TABLE weapon_category (
+    category_id Serial primary key,
+    category_name VARCHAR(50) NOT NULL UNIQUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+insert into weapon_category (category_name) values ('PISTOLS');
+insert into weapon_category (category_name) values ('RIFLES');
+insert into weapon_category (category_name) values ('GUNS');
+insert into weapon_category (category_name) values ('SHOTGUNS');
+
+
+--------------------------------------------------------------------------------------------------------------
 -- ACADEMY COACHES
 --------------------------------------------------------------------------------------------------------------
 
 CREATE TABLE academy_coaches (
-    -- Academy Connection
-    academy_id INT PRIMARY KEY,
+    profile_id UUID PRIMARY KEY,
 
-    disciplines_specialized TEXT[] NOT NULL,
+    academy_id INT NOT NULL,
 
     coaching_credentials_proof TEXT NOT NULL,
 
-    -- DPDP
     dpdp_consent BOOLEAN NOT NULL DEFAULT FALSE,
-
-    assigned_disciplines INT NOT NULL,
-    approval_notes TEXT,
 
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
-    -- FK: academy
+    CONSTRAINT fk_profile
+        FOREIGN KEY (profile_id)
+        REFERENCES profiles(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
     CONSTRAINT fk_academy
         FOREIGN KEY (academy_id)
-        REFERENCES academics(academy_id)
+        REFERENCES academies(id)
         ON DELETE RESTRICT
-        ON UPDATE cascade,
+        ON UPDATE CASCADE
+);
+
+
+--------------------------------------------------------------------------------------------------------------
+-- ACADEMY COACHES DISCIPLINES
+--------------------------------------------------------------------------------------------------------------
+
+CREATE TABLE academy_coach_disciplines (
+    coach_profile_id UUID NOT NULL,
+
+    category_id INT NOT NULL,
+
+    PRIMARY KEY (coach_profile_id, category_id),
+
+    CONSTRAINT fk_coach
+        FOREIGN KEY (coach_profile_id)
+        REFERENCES academy_coaches(profile_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
 
     CONSTRAINT fk_weapon_category
-        FOREIGN KEY (assigned_disciplines)
+        FOREIGN KEY (category_id)
         REFERENCES weapon_category(category_id)
         ON DELETE RESTRICT
-        ON UPDATE CASCADE,
-    -- Approval notes mandatory for rejection/more info
-    CONSTRAINT check_approval_notes
-        CHECK (
-            approval_status NOT IN ('rejected', 'more_info_required')
-            OR (
-                approval_notes IS NOT NULL
-                AND LENGTH(approval_notes) BETWEEN 10 AND 500
-            )
-        )
+        ON UPDATE CASCADE
 );
 
 
