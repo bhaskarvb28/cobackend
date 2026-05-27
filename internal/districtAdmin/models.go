@@ -32,6 +32,12 @@ type DistrictAdmin struct {
 	DPDPConsent    bool   `json:"dpdp_consent"`
 }
 
+type DistrictAdminRegion struct {
+	UserID     string
+	StateID    int
+	DistrictID int
+}
+
 type PaginatedDistrictAdmins struct {
 	Items        []DistrictAdmin `json:"items"`
 	Page         int             `json:"page"`

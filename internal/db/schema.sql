@@ -83,10 +83,10 @@ ON pincodes(district_id);
 
 
 --------------------------------------------------------------------------------------------------------------
--- WEAPON CATEGORIES
+-- DISCIPLINES
 --------------------------------------------------------------------------------------------------------------
 
-CREATE TABLE weapon_categories (
+CREATE TABLE disciplines (
 
     id SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
 
@@ -452,13 +452,13 @@ CREATE TABLE district_coach_disciplines (
 
     coach_user_id UUID NOT NULL,
 
-    weapon_category_id SMALLINT NOT NULL,
+    discipline_id SMALLINT NOT NULL,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     PRIMARY KEY (
         coach_user_id,
-        weapon_category_id
+        discipline_id
     ),
 
     CONSTRAINT fk_district_coach_disciplines_coach_user_id
@@ -467,9 +467,9 @@ CREATE TABLE district_coach_disciplines (
         ON DELETE CASCADE
         ON UPDATE CASCADE,
 
-    CONSTRAINT fk_district_coach_disciplines_weapon_category_id
-        FOREIGN KEY (weapon_category_id)
-        REFERENCES weapon_categories(id)
+    CONSTRAINT fk_district_coach_disciplines_discipline_id
+        FOREIGN KEY (discipline_id)
+        REFERENCES disciplines(id)
         ON DELETE RESTRICT
         ON UPDATE CASCADE
 );
@@ -478,8 +478,8 @@ CREATE TABLE district_coach_disciplines (
 -- DISTRICT COACH DISCIPLINES INDEXES
 --------------------------------------------------------------------------------------------------------------
 
-CREATE INDEX idx_district_coach_disciplines_weapon_category_id
-ON district_coach_disciplines(weapon_category_id);
+CREATE INDEX idx_district_coach_disciplines_discipline_id
+ON district_coach_disciplines(discipline_id);
 
 --------------------------------------------------------------------------------------------------------------
 -- ACADEMY ADMINS
@@ -598,13 +598,13 @@ CREATE TABLE academy_coach_disciplines (
 
     coach_user_id UUID NOT NULL,
 
-    weapon_category_id SMALLINT NOT NULL,
+    discipline_id SMALLINT NOT NULL,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     PRIMARY KEY (
         coach_user_id,
-        weapon_category_id
+        discipline_id
     ),
 
     CONSTRAINT fk_academy_coach_disciplines_coach_user_id
@@ -613,19 +613,19 @@ CREATE TABLE academy_coach_disciplines (
         ON DELETE CASCADE
         ON UPDATE CASCADE,
 
-    CONSTRAINT fk_academy_coach_disciplines_weapon_category_id
-        FOREIGN KEY (weapon_category_id)
-        REFERENCES weapon_categories(id)
+    CONSTRAINT fk_academy_coach_disciplines_discipline_id
+        FOREIGN KEY (discipline_id)
+        REFERENCES disciplines(id)
         ON DELETE RESTRICT
         ON UPDATE CASCADE
 );
 
 --------------------------------------------------------------------------------------------------------------
--- ACADEMY COAC DISCIPLINES INDEXES
+-- ACADEMY COACH DISCIPLINES INDEXES
 --------------------------------------------------------------------------------------------------------------
 
-CREATE INDEX idx_academy_coach_disciplines_weapon_category_id
-ON academy_coach_disciplines(weapon_category_id);
+CREATE INDEX idx_academy_coach_disciplines_discipline_id
+ON academy_coach_disciplines(discipline_id);
 
 --------------------------------------------------------------------------------------------------------------
 -- GENDER TYPE
@@ -764,12 +764,6 @@ CREATE TABLE player_personal_info (
         ON DELETE CASCADE
         ON UPDATE CASCADE,
 
-    CONSTRAINT fk_player_personal_info_residential_district_id
-        FOREIGN KEY (residential_district_id)
-        REFERENCES districts(id)
-        ON DELETE RESTRICT
-        ON UPDATE CASCADE,
-
     CONSTRAINT fk_player_personal_info_pincode_id
         FOREIGN KEY (pincode_id)
         REFERENCES pincodes(id)
@@ -800,8 +794,6 @@ EXECUTE FUNCTION update_updated_at_column();
 CREATE TABLE player_sports_profile (
 
     player_user_id UUID PRIMARY KEY,
-
-    weapon_category_id SMALLINT NOT NULL,
 
     unit_of_representation VARCHAR(100),
 
@@ -838,21 +830,8 @@ CREATE TABLE player_sports_profile (
         FOREIGN KEY (player_user_id)
         REFERENCES players(user_id)
         ON DELETE CASCADE
-        ON UPDATE CASCADE,
-
-    CONSTRAINT fk_player_sports_profile_weapon_category_id
-        FOREIGN KEY (weapon_category_id)
-        REFERENCES weapon_categories(id)
-        ON DELETE RESTRICT
         ON UPDATE CASCADE
 );
-
---------------------------------------------------------------------------------------------------------------
--- PLAYER SPORTS PROFILE INDEXES
---------------------------------------------------------------------------------------------------------------
-
-CREATE INDEX idx_player_sports_profile_weapon_category_id
-ON player_sports_profile(weapon_category_id);
 
 --------------------------------------------------------------------------------------------------------------
 -- PLAYER SPORTS PROFILE UPDATED_AT TRIGGER
@@ -862,6 +841,49 @@ CREATE TRIGGER player_sports_profile_set_updated_at
 BEFORE UPDATE ON player_sports_profile
 FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column();
+
+--------------------------------------------------------------------------------------------------------------
+-- PLAYER DISCIPLINES
+--------------------------------------------------------------------------------------------------------------
+
+CREATE TABLE player_disciplines (
+
+    player_user_id UUID NOT NULL,
+
+    discipline_id SMALLINT NOT NULL,
+
+    is_primary BOOLEAN NOT NULL DEFAULT FALSE,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (
+        player_user_id,
+        discipline_id
+    ),
+
+    CONSTRAINT fk_player_disciplines_player_user_id
+        FOREIGN KEY (player_user_id)
+        REFERENCES players(user_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_player_disciplines_discipline_id
+        FOREIGN KEY (discipline_id)
+        REFERENCES disciplines(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE
+);
+
+--------------------------------------------------------------------------------------------------------------
+-- PLAYER DISCIPLINES INDEXES
+--------------------------------------------------------------------------------------------------------------
+
+CREATE INDEX idx_player_disciplines_discipline_id
+ON player_disciplines(discipline_id);
+
+CREATE UNIQUE INDEX unique_primary_player_discipline
+ON player_disciplines(player_user_id)
+WHERE is_primary = TRUE;
 
 --------------------------------------------------------------------------------------------------------------
 -- PLAYER GUARDIANS
@@ -906,6 +928,10 @@ CREATE TABLE player_guardians (
 
 CREATE INDEX idx_player_guardians_player_user_id
 ON player_guardians(player_user_id);
+
+CREATE UNIQUE INDEX unique_primary_player_guardian
+ON player_guardians(player_user_id)
+WHERE is_primary = TRUE;
 
 --------------------------------------------------------------------------------------------------------------
 -- PLAYER PASSPORTS
@@ -993,3 +1019,4 @@ ON player_coach_assignments(player_user_id);
 
 CREATE INDEX idx_player_coach_assignments_coach_user_id
 ON player_coach_assignments(coach_user_id);
+

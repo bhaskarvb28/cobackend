@@ -6,10 +6,11 @@ import (
 
 	"cobackend/internal/utils"
 	"cobackend/internal/shared"
+	"cobackend/internal/middleware"
 
-	// "strings"
-	// "strconv"
-	// "fmt"
+	"strings"
+	"strconv"
+	"fmt"
 )
 
 func CreateAcademyHandler(
@@ -40,8 +41,11 @@ func CreateAcademyHandler(
 		return
 	}
 
+	authUserID := r.Context().Value(middleware.UserIDKey).(string)
+
 	academy, err := CreateAcademyService(
 		r.Context(),
+		authUserID,
 		input,
 	)
 
@@ -70,186 +74,247 @@ func CreateAcademyHandler(
 	)
 }
 
-// func GetAcademiesHandler(
-// 	w http.ResponseWriter,
-// 	r *http.Request,
-// ) {
+// GetAcademiesHandler fetches a list of academies
+// based on query parameters.
+//
+// Authorization:
+//
+//	- district_admin
+//
+// Query Params:
+//
+//	- page (optional, default: 1): Page number to fetch (must be >= 1).
+//	- limit (optional, default: 10): Items per page (must be >= 1, or string "all").
+//	- search (optional): Filters results by name or address using case-insensitive substring match.
+//	- state_id (optional): Filters results by state ID.
+//	- district_id (optional): Filters results by district ID.
+//	- sort_by (optional, default: "name"): Fields allowed: "id", "name", "state_id", "district_id", "created_at", "updated_at".
+//	- order_by (optional, default: "asc"): Allowed values: "asc" or "desc".
+//
+// Responses:
+//
+//	- 200:
+//	  Academies fetched successfully. Returns a paginated object containing:
+//	    - items: array of Academy objects
+//	    - page, limit, total, total_pages, has_next, has_previous metadata fields.
+//
+//	- 400:
+//	  Invalid query parameters. Possible error messages:
+//	    - "invalid state_id" (state_id is not a valid integer)
+//	    - "invalid district_id" (district_id is not a valid integer)
+//	    - "invalid page" (page value is less than 1 or not a valid integer)
+//	    - "invalid limit" (limit value is less than 1 or not a valid integer/all)
+//	    - "invalid sort_by field" (sort_by column is not in allowed sort list)
+//	    - "invalid order_by value" (order_by direction is not asc/desc)
+//
+//	- 401:
+//	  Unauthorized (missing or invalid JWT token).
+//
+//	- 403:
+//	  Forbidden (user does not possess the district_admin role).
+//
+//	- 500:
+//	  Internal server error (unexpected query execution failure).
+func GetAcademiesHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
 
-// 	pageStr := r.URL.Query().Get("page")
-// 	limitStr := r.URL.Query().Get("limit")
-// 	search := strings.TrimSpace(
-// 		r.URL.Query().Get("search"),
-// 	)
-// 	stateStr := r.URL.Query().Get("state_id")
-// 	districtStr := r.URL.Query().Get("district_id")
-// 	sortBy := r.URL.Query().Get("sort_by")
-// 	orderBy := r.URL.Query().Get("order_by")
+	// ----------------------------------------------------------
+	// Parse Query Parameters
+	// ----------------------------------------------------------
 
-// 	stateID := 0
-// 	if stateStr != "" {
+	pageStr := r.URL.Query().Get("page")
+	limitStr := r.URL.Query().Get("limit")
+	search := strings.TrimSpace(
+		r.URL.Query().Get("search"),
+	)
+	stateStr := r.URL.Query().Get("state_id")
+	districtStr := r.URL.Query().Get("district_id")
+	sortBy := r.URL.Query().Get("sort_by")
+	orderBy := r.URL.Query().Get("order_by")
 
-// 		parsed, err := strconv.Atoi(stateStr)
-// 		if err != nil {
+	stateID := 0
+	if stateStr != "" {
 
-// 			utils.WriteJSON(
-// 				w,
-// 				http.StatusBadRequest,
-// 				shared.APIResponse{
-// 					Success: false,
-// 					Message: "invalid state_id",
-// 				},
-// 			)
+		parsed, err := strconv.Atoi(stateStr)
+		if err != nil {
 
-// 			return
-// 		}
+			utils.WriteJSON(
+				w,
+				http.StatusBadRequest,
+				shared.APIResponse{
+					Success: false,
+					Message: "invalid state_id",
+				},
+			)
 
-// 		stateID = parsed
-// 	}
+			return
+		}
 
-// 	districtID := 0
-// 	if districtStr != "" {
+		stateID = parsed
+	}
 
-// 		parsed, err := strconv.Atoi(districtStr)
-// 		if err != nil {
+	districtID := 0
+	if districtStr != "" {
 
-// 			utils.WriteJSON(
-// 				w,
-// 				http.StatusBadRequest,
-// 				shared.APIResponse{
-// 					Success: false,
-// 					Message: "invalid district_id",
-// 				},
-// 			)
+		parsed, err := strconv.Atoi(districtStr)
+		if err != nil {
 
-// 			return
-// 		}
+			utils.WriteJSON(
+				w,
+				http.StatusBadRequest,
+				shared.APIResponse{
+					Success: false,
+					Message: "invalid district_id",
+				},
+			)
 
-// 		districtID = parsed
-// 	}
+			return
+		}
 
-// 	page := 1
-// 	if pageStr != "" {
+		districtID = parsed
+	}
 
-// 		parsed, err := strconv.Atoi(pageStr)
-// 		if err != nil || parsed < 1 {
+	// ----------------------------------------------------------
+	// Validate Pagination Limits
+	// ----------------------------------------------------------
 
-// 			utils.WriteJSON(
-// 				w,
-// 				http.StatusBadRequest,
-// 				shared.APIResponse{
-// 					Success: false,
-// 					Message: "invalid page",
-// 				},
-// 			)
+	page := 1
+	if pageStr != "" {
 
-// 			return
-// 		}
+		parsed, err := strconv.Atoi(pageStr)
+		if err != nil || parsed < 1 {
 
-// 		page = parsed
-// 	}
+			utils.WriteJSON(
+				w,
+				http.StatusBadRequest,
+				shared.APIResponse{
+					Success: false,
+					Message: "invalid page",
+				},
+			)
 
-// 	limit := 10
-// 	if limitStr != "" {
+			return
+		}
 
-// 		if limitStr == "all" {
+		page = parsed
+	}
 
-// 			limit = 0
+	limit := 10
+	if limitStr != "" {
 
-// 		} else {
+		if limitStr == "all" {
 
-// 			parsed, err := strconv.Atoi(limitStr)
-// 			if err != nil || parsed < 1 {
+			limit = 0
 
-// 				utils.WriteJSON(
-// 					w,
-// 					http.StatusBadRequest,
-// 					shared.APIResponse{
-// 						Success: false,
-// 						Message: "invalid limit",
-// 					},
-// 				)
+		} else {
 
-// 				return
-// 			}
+			parsed, err := strconv.Atoi(limitStr)
+			if err != nil || parsed < 1 {
 
-// 			limit = parsed
-// 		}
-// 	}
+				utils.WriteJSON(
+					w,
+					http.StatusBadRequest,
+					shared.APIResponse{
+						Success: false,
+						Message: "invalid limit",
+					},
+				)
 
-// 	if sortBy == "" {
-// 		sortBy = "name"
-// 	}
+				return
+			}
 
-// 	if orderBy == "" {
-// 		orderBy = "asc"
-// 	}
+			limit = parsed
+		}
+	}
 
-// 	_, exists := AllowedAcademySortFields[sortBy]
+	// ----------------------------------------------------------
+	// Validate Sorting Fields
+	// ----------------------------------------------------------
 
-// 	if !exists {
+	if sortBy == "" {
+		sortBy = "name"
+	}
 
-// 		utils.WriteJSON(
-// 			w,
-// 			http.StatusBadRequest,
-// 			shared.APIResponse{
-// 				Success: false,
-// 				Message: "invalid sort_by field",
-// 			},
-// 		)
+	if orderBy == "" {
+		orderBy = "asc"
+	}
 
-// 		return
-// 	}
+	_, exists := AllowedAcademySortFields[sortBy]
 
-// 	orderBy = strings.ToUpper(orderBy)
+	if !exists {
 
-// 	if orderBy != "ASC" && orderBy != "DESC" {
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "invalid sort_by field",
+			},
+		)
 
-// 		utils.WriteJSON(
-// 			w,
-// 			http.StatusBadRequest,
-// 			shared.APIResponse{
-// 				Success: false,
-// 				Message: "invalid order_by value",
-// 			},
-// 		)
+		return
+	}
 
-// 		return
-// 	}
+	orderBy = strings.ToUpper(orderBy)
 
-// 	query := GetAcademiesQuery{
-// 		Page:       page,
-// 		Limit:      limit,
-// 		Search:     search,
-// 		StateID:    stateID,
-// 		DistrictID: districtID,
-// 		SortBy:     sortBy,
-// 		OrderBy:    orderBy,
-// 	}
+	if orderBy != "ASC" && orderBy != "DESC" {
 
-// 	result, err := GetAcademiesService(
-// 		r.Context(),
-// 		query,
-// 	)
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "invalid order_by value",
+			},
+		)
 
-// 	if err != nil {
-// 		fmt.Print(err)
+		return
+	}
 
-// 		// utils.WriteError(
-// 		// 	w,
-// 		// 	err,
-// 		// 	"failed to fetch academies",
-// 		// )
+	query := GetAcademiesQuery{
+		Page:       page,
+		Limit:      limit,
+		Search:     search,
+		StateID:    stateID,
+		DistrictID: districtID,
+		SortBy:     sortBy,
+		OrderBy:    orderBy,
+	}
 
-// 		return
-// 	}
+	// ----------------------------------------------------------
+	// Execute Service
+	// ----------------------------------------------------------
 
-// 	utils.WriteJSON(
-// 		w,
-// 		http.StatusOK,
-// 		shared.APIResponse{
-// 			Success: true,
-// 			Message: "academies fetched successfully",
-// 			Data:    result,
-// 		},
-// 	)
-// }
+	result, err := GetAcademiesService(
+		r.Context(),
+		query,
+	)
+
+	if err != nil {
+		fmt.Print(err)
+
+		// utils.WriteError(
+		// 	w,
+		// 	err,
+		// 	"failed to fetch academies",
+		// )
+
+		return
+	}
+
+	// ----------------------------------------------------------
+	// Success Response
+	// ----------------------------------------------------------
+
+	utils.WriteJSON(
+		w,
+		http.StatusOK,
+		shared.APIResponse{
+			Success: true,
+			Message: "academies fetched successfully",
+			Data:    result,
+		},
+	)
+}

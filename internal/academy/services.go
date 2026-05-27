@@ -4,12 +4,13 @@ import (
 	"context"
 	"strings"
 
+	"cobackend/internal/districtAdmin"
 	"cobackend/internal/shared"
-	"cobackend/internal/district"
 )
 
 func CreateAcademyService(
 	ctx context.Context,
+	userID string,
 	input CreateAcademyInput,
 ) (*AcademyResponse, error) {
 
@@ -28,29 +29,21 @@ func CreateAcademyService(
 		return nil, shared.ErrAcademyNameRequired
 	}
 
-	if input.DistrictID <= 0 {
-		return nil, shared.ErrInvalidDistrict
-	}
-
 	if input.Address == "" {
 		return nil, shared.ErrAddressRequired
 	}
 
 	// ----------------------------------------------------------
-	// Validate District Exists
+	// Get District Admin
 	// ----------------------------------------------------------
 
-	exists, err := district.CheckDistrictExists(
+	districtAdminRegion, err := districtAdmin.GetDistrictAdminRegion(
 		ctx,
-		input.DistrictID,
+		userID,
 	)
 
 	if err != nil {
 		return nil, err
-	}
-
-	if !exists {
-		return nil, shared.ErrDistrictNotFound
 	}
 
 	// ----------------------------------------------------------
@@ -59,6 +52,7 @@ func CreateAcademyService(
 
 	academy, err := CreateAcademyRepository(
 		ctx,
+		districtAdminRegion.DistrictID,
 		input,
 	)
 
@@ -69,13 +63,19 @@ func CreateAcademyService(
 	return academy, nil
 }
 
-// func GetAcademiesService(
-// 	ctx context.Context,
-// 	query GetAcademiesQuery,
-// ) (PaginatedAcademies, error) {
+// GetAcademiesService retrieves a paginated list of academies
+// based on state, district, search, and sorting criteria.
+func GetAcademiesService(
+	ctx context.Context,
+	query GetAcademiesQuery,
+) (PaginatedAcademies, error) {
 
-// 	return GetAcademiesRepository(
-// 		ctx,
-// 		query,
-// 	)
-// }
+	// ----------------------------------------------------------
+	// Fetch Academies
+	// ----------------------------------------------------------
+	// Query repository layer directly to fetch rows and pagination total counts
+	return GetAcademiesRepository(
+		ctx,
+		query,
+	)
+}

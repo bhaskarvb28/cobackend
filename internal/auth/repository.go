@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"cobackend/internal/db"
 	"cobackend/internal/shared"
@@ -333,6 +334,7 @@ func GetProfileCompletedStatus(
 	).Scan(&profileCompleted)
 
 	if err != nil {
+		fmt.Print("Profile Complete Middleware : ", err)
 		return false, err
 	}
 

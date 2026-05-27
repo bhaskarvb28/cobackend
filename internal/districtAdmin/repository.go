@@ -203,6 +203,47 @@ func GetDistrictAdminsRepository(
 	}, nil
 }
 
+func GetDistrictAdminRegion(
+	ctx context.Context,
+	userID string,
+) (*DistrictAdminRegion, error) {
+
+	var districtAdmin DistrictAdminRegion
+
+	err := db.DB.QueryRow(
+		ctx,
+		`
+		SELECT
+			da.user_id,
+			d.id,
+			d.state_id
+
+		FROM district_admins da
+
+		INNER JOIN districts d
+			ON d.id = da.district_id
+
+		WHERE da.user_id = $1
+		`,
+		userID,
+	).Scan(
+		&districtAdmin.UserID,
+		&districtAdmin.DistrictID,
+		&districtAdmin.StateID,
+	)
+
+	if err != nil {
+
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, shared.ErrDistrictAdminNotFound
+		}
+
+		return nil, err
+	}
+
+	return &districtAdmin, nil
+}
+
 func CheckDistrictAdminExists(
 	ctx context.Context,
 	profileID string,

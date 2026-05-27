@@ -39,10 +39,11 @@ type DistrictAdminProfileResponse struct {
 	StateName string `json:"state_name"`
 }
 
-type WeaponCategory struct {
+type Discipline struct {
 	ID          int16  `json:"id"`
 	Code        string `json:"code"`
 	DisplayName string `json:"display_name"`
+	IsPrimary   bool   `json:"is_primary,omitempty"`
 }
 
 type PincodeInfo struct {
@@ -77,7 +78,7 @@ type DistrictCoachProfileResponse struct {
 	CoachCode *string `json:"coach_code,omitempty"`
 	CoachingCertificateProof *string `json:"coaching_certificate_proof,omitempty"`
 
-	Disciplines []WeaponCategory `json:"disciplines"`
+	Disciplines []Discipline `json:"disciplines"`
 }
 
 type AcademyAdminProfileResponse struct {
@@ -126,7 +127,7 @@ type AcademyCoachProfileResponse struct {
 
 	StateName string `json:"state_name"`
 
-	Disciplines []WeaponCategory `json:"disciplines"`
+	Disciplines []Discipline `json:"disciplines"`
 }
 
 type PlayerGuardian struct {
@@ -164,7 +165,6 @@ type PlayerPersonalInfo struct {
 }
 
 type PlayerSportsProfile struct {
-	WeaponCategory WeaponCategory `json:"weapon_category"`
 
 	UnitOfRepresentation *string `json:"unit_of_representation,omitempty"`
 
@@ -208,6 +208,8 @@ type PlayerProfileResponse struct {
 
 	SportsProfile *PlayerSportsProfile `json:"sports_profile,omitempty"`
 
+	Disciplines []Discipline `json:"disciplines"`
+
 	Passport *PlayerPassport `json:"passport,omitempty"`
 
 	Guardians []PlayerGuardian `json:"guardians"`
@@ -229,7 +231,7 @@ type CompleteDistrictCoachProfileInput struct {
 
 	CoachingCertificateProof string `json:"coaching_certificate_proof"`
 
-	WeaponCategoryIDs []int16 `json:"weapon_category_ids"`
+	DisciplineIDs []int16 `json:"discipline_ids"`
 }
 
 type CompleteAcademyAdminProfileInput struct {
@@ -247,7 +249,7 @@ type CompleteAcademyCoachProfileInput struct {
 
 	CoachingCertificateProof string `json:"coaching_certificate_proof"`
 
-	WeaponCategoryIDs []int16 `json:"weapon_category_ids"`
+	DisciplineIDs []int16 `json:"discipline_ids"`
 }
 
 type PlayerPersonalInfoInput struct {
@@ -275,8 +277,6 @@ type PlayerPersonalInfoInput struct {
 }
 
 type PlayerSportsProfileInput struct {
-	WeaponCategoryID int16 `json:"weapon_category_id"`
-
 	UnitOfRepresentation *string `json:"unit_of_representation,omitempty"`
 
 	DominantHand *string `json:"dominant_hand,omitempty"`
@@ -288,6 +288,12 @@ type PlayerSportsProfileInput struct {
 	ShoeSize *string `json:"shoe_size,omitempty"`
 
 	TracksuitSize *string `json:"tracksuit_size,omitempty"`
+}
+
+type PlayerDisciplineInput struct {
+	DisciplineID int16 `json:"discipline_id"`
+
+	IsPrimary bool `json:"is_primary"`
 }
 
 type PlayerGuardianInput struct {
@@ -307,9 +313,11 @@ type PlayerGuardianInput struct {
 type CompletePlayerProfileInput struct {
 	DPDPConsent bool `json:"dpdp_consent"`
 
-	PersonalInfo PlayerPersonalInfoInput
+	PersonalInfo PlayerPersonalInfoInput `json:"personal_info"`
 
 	SportsProfile PlayerSportsProfileInput `json:"sports_profile"`
+
+	Disciplines []PlayerDisciplineInput `json:"disciplines"`
 
 	Passport *PlayerPassport `json:"passport,omitempty"`
 

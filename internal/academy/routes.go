@@ -19,7 +19,7 @@ func RegisterRoutes(r chi.Router) {
 			))
 
 			r.Post("/", CreateAcademyHandler)
-			// r.Get("/", GetAcademiesHandler)
+			r.Get("/", GetAcademiesHandler)
 		})
 	})
 }

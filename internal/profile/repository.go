@@ -11,75 +11,75 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-func CheckEmailExists(
-	ctx context.Context,
-	email string,
-) (bool, error) {
+// func CheckEmailExists(
+// 	ctx context.Context,
+// 	email string,
+// ) (bool, error) {
 
-	var exists bool
+// 	var exists bool
 
-	err := db.DB.QueryRow(
-		ctx,
-		`
-		SELECT EXISTS (
-			SELECT 1
-			FROM profiles
-			WHERE email = $1
-		)
-		`,
-		email,
-	).Scan(&exists)
+// 	err := db.DB.QueryRow(
+// 		ctx,
+// 		`
+// 		SELECT EXISTS (
+// 			SELECT 1
+// 			FROM profiles
+// 			WHERE email = $1
+// 		)
+// 		`,
+// 		email,
+// 	).Scan(&exists)
 
-	if err != nil {
-		return false, err
-	}
+// 	if err != nil {
+// 		return false, err
+// 	}
 
-	return exists, nil
-}
+// 	return exists, nil
+// }
 
-func CreateProfileTx(
-	ctx context.Context,
-	tx pgx.Tx,
-	input CreateProfileInput,
-) (string, error) {
+// func CreateProfileTx(
+// 	ctx context.Context,
+// 	tx pgx.Tx,
+// 	input CreateProfileInput,
+// ) (string, error) {
 
-	var profileID string
+// 	var profileID string
 
-	err := tx.QueryRow(
-		ctx,
-		`
-		INSERT INTO profiles (
-			first_name,
-			last_name,
-			email,
-			password_hash,
-			contact_number,
-			role_id
-		)
-		VALUES (
-			$1,
-			$2,
-			$3,
-			$4,
-			$5,
-			$6
-		)
-		RETURNING id
-		`,
-		input.FirstName,
-		input.LastName,
-		input.Email,
-		input.PasswordHash,
-		input.ContactNumber,
-		input.RoleID,
-	).Scan(&profileID)
+// 	err := tx.QueryRow(
+// 		ctx,
+// 		`
+// 		INSERT INTO profiles (
+// 			first_name,
+// 			last_name,
+// 			email,
+// 			password_hash,
+// 			contact_number,
+// 			role_id
+// 		)
+// 		VALUES (
+// 			$1,
+// 			$2,
+// 			$3,
+// 			$4,
+// 			$5,
+// 			$6
+// 		)
+// 		RETURNING id
+// 		`,
+// 		input.FirstName,
+// 		input.LastName,
+// 		input.Email,
+// 		input.PasswordHash,
+// 		input.ContactNumber,
+// 		input.RoleID,
+// 	).Scan(&profileID)
 
-	if err != nil {
-		return "", err
-	}
+// 	if err != nil {
+// 		return "", err
+// 	}
 
-	return profileID, nil
-}
+// 	return profileID, nil
+// }
 
 // func GetProfileByID(
 // 	ctx context.Context,
@@ -317,22 +317,22 @@ func GetDistrictCoachProfileByUserID(
 func GetDistrictCoachDisciplinesByUserID(
 	ctx context.Context,
 	userID string,
-) ([]WeaponCategory, error) {
+) ([]Discipline, error) {
 
 	query := `
 		SELECT
-			wc.id,
-			wc.code,
-			wc.display_name
+			d.id,
+			d.code,
+			d.display_name
 
 		FROM district_coach_disciplines dcd
 
-		INNER JOIN weapon_categories wc
-			ON wc.id = dcd.weapon_category_id
+		INNER JOIN disciplines d
+			ON d.id = dcd.discipline_id
 
 		WHERE dcd.coach_user_id = $1
 
-		ORDER BY wc.display_name
+		ORDER BY d.display_name
 	`
 
 	rows, err := db.DB.Query(
@@ -347,11 +347,11 @@ func GetDistrictCoachDisciplinesByUserID(
 
 	defer rows.Close()
 
-	disciplines := []WeaponCategory{}
+	disciplines := []Discipline{}
 
 	for rows.Next() {
 
-		var discipline WeaponCategory
+		var discipline Discipline
 
 		err := rows.Scan(
 			&discipline.ID,
@@ -540,22 +540,22 @@ func GetAcademyCoachProfileByUserID(
 func GetAcademyCoachDisciplinesByUserID(
 	ctx context.Context,
 	userID string,
-) ([]WeaponCategory, error) {
+) ([]Discipline, error) {
 
 	query := `
 		SELECT
-			wc.id,
-			wc.code,
-			wc.display_name
+			d.id,
+			d.code,
+			d.display_name
 
 		FROM academy_coach_disciplines acd
 
-		INNER JOIN weapon_categories wc
-			ON wc.id = acd.weapon_category_id
+		INNER JOIN disciplines d
+			ON d.id = acd.discipline_id
 
 		WHERE acd.coach_user_id = $1
 
-		ORDER BY wc.display_name
+		ORDER BY d.display_name
 	`
 
 	rows, err := db.DB.Query(
@@ -570,11 +570,11 @@ func GetAcademyCoachDisciplinesByUserID(
 
 	defer rows.Close()
 
-	disciplines := []WeaponCategory{}
+	disciplines := []Discipline{}
 
 	for rows.Next() {
 
-		var discipline WeaponCategory
+		var discipline Discipline
 
 		err := rows.Scan(
 			&discipline.ID,
@@ -687,6 +687,21 @@ func GetPlayerProfileByUserID(
 	if err == nil {
 		profile.SportsProfile = &sportsProfile
 	}
+
+	// ----------------------------------------------------------
+	// Disciplines
+	// ----------------------------------------------------------
+
+	disciplines, err := GetPlayerDisciplinesByUserID(
+		ctx,
+		userID,
+	)
+
+	if err != nil {
+		return PlayerProfileResponse{}, err
+	}
+
+	profile.Disciplines = disciplines
 
 	// ----------------------------------------------------------
 	// Passport
@@ -836,10 +851,6 @@ func GetPlayerSportsProfileByUserID(
 
 	query := `
 		SELECT
-			wc.id,
-			wc.code,
-			wc.display_name,
-
 			psp.unit_of_representation,
 			psp.dominant_hand,
 			psp.height_cm,
@@ -848,9 +859,6 @@ func GetPlayerSportsProfileByUserID(
 			psp.tracksuit_size
 
 		FROM player_sports_profile psp
-
-		INNER JOIN weapon_categories wc
-			ON wc.id = psp.weapon_category_id
 
 		WHERE psp.player_user_id = $1
 	`
@@ -862,9 +870,6 @@ func GetPlayerSportsProfileByUserID(
 		query,
 		userID,
 	).Scan(
-		&profile.WeaponCategory.ID,
-		&profile.WeaponCategory.Code,
-		&profile.WeaponCategory.DisplayName,
 
 		&profile.UnitOfRepresentation,
 		&profile.DominantHand,
@@ -885,6 +890,68 @@ func GetPlayerSportsProfileByUserID(
 	}
 
 	return profile, nil
+}
+
+func GetPlayerDisciplinesByUserID(
+	ctx context.Context,
+	userID string,
+) ([]Discipline, error) {
+
+	query := `
+		SELECT
+			d.id,
+			d.code,
+			d.display_name,
+			pd.is_primary
+
+		FROM player_disciplines pd
+
+		INNER JOIN disciplines d
+			ON d.id = pd.discipline_id
+
+		WHERE pd.player_user_id = $1
+
+		ORDER BY
+			pd.is_primary DESC,
+			d.display_name ASC
+	`
+
+	rows, err := db.DB.Query(
+		ctx,
+		query,
+		userID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	disciplines := []Discipline{}
+
+	for rows.Next() {
+
+		var discipline Discipline
+
+		err := rows.Scan(
+			&discipline.ID,
+			&discipline.Code,
+			&discipline.DisplayName,
+			&discipline.IsPrimary,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		disciplines = append(
+			disciplines,
+			discipline,
+		)
+	}
+
+	return disciplines, nil
 }
 
 func GetPlayerPassportByUserID(
@@ -1065,7 +1132,7 @@ func CompleteDistrictCoachProfile(
 		input.DPDPConsent &&
 			strings.TrimSpace(input.CoachCode) != "" &&
 			strings.TrimSpace(input.CoachingCertificateProof) != "" &&
-			len(input.WeaponCategoryIDs) > 0
+			len(input.DisciplineIDs) > 0
 
 	// ----------------------------------------------------------
 	// Update District Coach
@@ -1114,19 +1181,18 @@ func CompleteDistrictCoachProfile(
 	// Insert Disciplines
 	// ----------------------------------------------------------
 
-	for _, weaponCategoryID := range input.WeaponCategoryIDs {
-
+	for _, disciplineID := range input.DisciplineIDs {
 		_, err = tx.Exec(
 			ctx,
 			`
 			INSERT INTO district_coach_disciplines (
 				coach_user_id,
-				weapon_category_id
+				discipline_id
 			)
 			VALUES ($1, $2)
 			`,
 			userID,
-			weaponCategoryID,
+			disciplineID,
 		)
 
 		if err != nil {
@@ -1201,7 +1267,7 @@ func CompleteAcademyCoachProfile(
 		input.DPDPConsent &&
 			strings.TrimSpace(input.CoachCode) != "" &&
 			strings.TrimSpace(input.CoachingCertificateProof) != "" &&
-			len(input.WeaponCategoryIDs) > 0
+			len(input.DisciplineIDs) > 0
 
 	// ----------------------------------------------------------
 	// Update Academy Coach
@@ -1250,19 +1316,19 @@ func CompleteAcademyCoachProfile(
 	// Insert Disciplines
 	// ----------------------------------------------------------
 
-	for _, weaponCategoryID := range input.WeaponCategoryIDs {
+	for _, disciplineID := range input.DisciplineIDs {
 
 		_, err = tx.Exec(
 			ctx,
 			`
 			INSERT INTO academy_coach_disciplines (
 				coach_user_id,
-				weapon_category_id
+				discipline_id
 			)
 			VALUES ($1, $2)
 			`,
 			userID,
-			weaponCategoryID,
+			disciplineID,
 		)
 
 		if err != nil {
@@ -1306,7 +1372,7 @@ func CompletePlayerProfile(
 		!input.PersonalInfo.DateOfBirth.IsZero() &&
 		strings.TrimSpace(input.PersonalInfo.Gender) != "" &&
 		strings.TrimSpace(input.PersonalInfo.Nationality) != "" &&
-		input.SportsProfile.WeaponCategoryID > 0 &&
+		len(input.Disciplines) > 0 &&
 		len(input.Guardians) > 0
 
 	// ----------------------------------------------------------
@@ -1399,7 +1465,6 @@ func CompletePlayerProfile(
 		`
 		INSERT INTO player_sports_profile (
 			player_user_id,
-			weapon_category_id,
 			unit_of_representation,
 			dominant_hand,
 			height_cm,
@@ -1409,12 +1474,11 @@ func CompletePlayerProfile(
 		)
 		VALUES (
 			$1, $2, $3, $4,
-			$5, $6, $7, $8
+			$5, $6, $7
 		)
 
 		ON CONFLICT (player_user_id)
 		DO UPDATE SET
-			weapon_category_id = EXCLUDED.weapon_category_id,
 			unit_of_representation = EXCLUDED.unit_of_representation,
 			dominant_hand = EXCLUDED.dominant_hand,
 			height_cm = EXCLUDED.height_cm,
@@ -1423,7 +1487,6 @@ func CompletePlayerProfile(
 			tracksuit_size = EXCLUDED.tracksuit_size
 		`,
 		userID,
-		input.SportsProfile.WeaponCategoryID,
 		input.SportsProfile.UnitOfRepresentation,
 		input.SportsProfile.DominantHand,
 		input.SportsProfile.HeightCM,
@@ -1434,6 +1497,45 @@ func CompletePlayerProfile(
 
 	if err != nil {
 		return err
+	}
+
+	// ----------------------------------------------------------
+	// Replace Disciplines
+	// ----------------------------------------------------------
+
+	_, err = tx.Exec(
+		ctx,
+		`
+		DELETE FROM player_disciplines
+		WHERE player_user_id = $1
+		`,
+		userID,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	for _, discipline := range input.Disciplines {
+
+		_, err = tx.Exec(
+			ctx,
+			`
+			INSERT INTO player_disciplines (
+				player_user_id,
+				discipline_id,
+				is_primary
+			)
+			VALUES ($1, $2, $3)
+			`,
+			userID,
+			discipline.DisciplineID,
+			discipline.IsPrimary,
+		)
+
+		if err != nil {
+			return err
+		}
 	}
 
 	// ----------------------------------------------------------

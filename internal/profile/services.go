@@ -41,6 +41,12 @@ func GetProfileService(
 
 	switch user.Role.Code {
 
+	case "super_admin":
+
+		response.Profile = map[string]any{
+			"profile_completed": true,
+		}
+
 	case "state_admin":
 
 		stateAdminProfile, err := GetStateAdminProfileByUserID(
