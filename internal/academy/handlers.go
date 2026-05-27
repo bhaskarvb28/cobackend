@@ -8,6 +8,8 @@ import (
 	"cobackend/internal/shared"
 	"cobackend/internal/middleware"
 
+	"github.com/go-chi/chi/v5"
+
 	"strings"
 	"strconv"
 	"fmt"
@@ -315,6 +317,291 @@ func GetAcademiesHandler(
 			Success: true,
 			Message: "academies fetched successfully",
 			Data:    result,
+		},
+	)
+}
+
+func CreateAcademyBuildingHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+	defer r.Body.Close()
+
+	var input CreateAcademyBuildingInput
+
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+
+	err := decoder.Decode(&input)
+
+	if err != nil {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "invalid request body",
+			},
+		)
+
+		return
+	}
+
+	authUserID := r.Context().Value(middleware.UserIDKey).(string)
+
+	academyBuilding, err := CreateAcademyBuildingService(
+		r.Context(),
+		authUserID,
+		input,
+	)
+
+	if err != nil {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: err.Error(),
+			},
+		)
+
+		return
+	}
+
+	utils.WriteJSON(
+		w,
+		http.StatusCreated,
+		shared.APIResponse{
+			Success: true,
+			Message: "academy building created successfully",
+			Data:    academyBuilding,
+		},
+	)
+}
+
+func AddAcademyBuildingDisciplineHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	defer r.Body.Close()
+
+	var input AddAcademyBuildingDisciplineInput
+
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+
+	err := decoder.Decode(&input)
+
+	if err != nil {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "invalid request body",
+			},
+		)
+
+		return
+	}
+
+	buildingIDParam := chi.URLParam(
+		r,
+		"buildingID",
+	)
+
+	buildingID, err := strconv.ParseInt(
+		buildingIDParam,
+		10,
+		64,
+	)
+
+	if err != nil {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "invalid building id",
+			},
+		)
+
+		return
+	}
+
+	authUserID := r.Context().
+		Value(middleware.UserIDKey).
+		( string )
+
+	response, err := AddAcademyBuildingDisciplineService(
+		r.Context(),
+		authUserID,
+		buildingID,
+		input,
+	)
+
+	if err != nil {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "Internal Server Error",
+			},
+		)
+
+		return
+	}
+
+	utils.WriteJSON(
+		w,
+		http.StatusCreated,
+		shared.APIResponse{
+			Success: true,
+			Message: "building discipline added successfully",
+			Data:    response,
+		},
+	)
+}
+
+// ============================================================================
+// handler.go
+// ============================================================================
+
+func AddAcademyBuildingEventHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	defer r.Body.Close()
+
+	var input AddAcademyBuildingEventInput
+
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+
+	err := decoder.Decode(&input)
+
+	if err != nil {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "invalid request body",
+			},
+		)
+
+		return
+	}
+
+	buildingIDParam := chi.URLParam(
+		r,
+		"buildingID",
+	)
+
+	buildingID, err := strconv.ParseInt(
+		buildingIDParam,
+		10,
+		64,
+	)
+
+	if err != nil {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "invalid building id",
+			},
+		)
+
+		return
+	}
+
+	authUserID := r.Context().
+		Value(middleware.UserIDKey).
+		( string )
+
+	response, err := AddAcademyBuildingEventService(
+		r.Context(),
+		authUserID,
+		buildingID,
+		input,
+	)
+
+	if err != nil {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: err.Error(),
+			},
+		)
+
+		return
+	}
+
+	utils.WriteJSON(
+		w,
+		http.StatusCreated,
+		shared.APIResponse{
+			Success: true,
+			Message: "building event added successfully",
+			Data:    response,
+		},
+	)
+}
+
+// ============================================================================
+// handler.go
+// ============================================================================
+
+func GetAcademyBuildingsHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	authUserID := r.Context().
+		Value(middleware.UserIDKey).
+		( string )
+
+	buildings, err := GetAcademyBuildingsService(
+		r.Context(),
+		authUserID,
+	)
+
+	if err != nil {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: err.Error(),
+			},
+		)
+
+		return
+	}
+
+	utils.WriteJSON(
+		w,
+		http.StatusOK,
+		shared.APIResponse{
+			Success: true,
+			Message: "academy buildings fetched successfully",
+			Data:    buildings,
 		},
 	)
 }

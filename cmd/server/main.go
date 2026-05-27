@@ -2,10 +2,12 @@ package main
 
 import (
 	"cobackend/internal/academy"
+	"cobackend/internal/disciplines"
 	// "cobackend/internal/academyAdmin"
 	// "cobackend/internal/academyCoach"
 	"cobackend/internal/auth"
 	"cobackend/internal/db"
+
 	// "cobackend/internal/districtCoach"
 	"cobackend/internal/district"
 	"cobackend/internal/invitation"
@@ -49,6 +51,7 @@ func main() {
 		academy.RegisterRoutes(r)
 
 		profile.RegisterRoutes(r)
+		disciplines.RegisterRoute(r)
 
 		// stateAdmin.RegisterRoutes(r)
 		// districtAdmin.RegisterRoutes(r)

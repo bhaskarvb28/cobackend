@@ -42,18 +42,52 @@ type PaginatedAcademies struct {
 	HasPrevious bool      `json:"has_previous"` // Boolean indicating if previous page is available
 }
 
+type CreateAcademyBuildingInput struct {
+	BuildingName string `json:"building_name"`
+}
 
+type AcademyBuildingResponse struct {
+	ID           int64  `json:"id"`
+	AcademyID    string `json:"academy_id"`
+	BuildingName string `json:"building_name"`
+	IsActive     bool   `json:"is_active"`
+}
 
+type AddAcademyBuildingDisciplineInput struct {
+	DisciplineID int `json:"discipline_id"`
+}
 
+type AcademyBuildingDisciplineResponse struct {
+	AcademyBuildingID int `json:"academy_building_id"`
+	DisciplineID      int `json:"discipline_id"`
+}
 
+type AddAcademyBuildingEventInput struct {
+	ShootingEventID int `json:"shooting_event_id"`
+}
 
+type AcademyBuildingEventResponse struct {
+	AcademyBuildingID int64 `json:"academy_building_id"`
+	ShootingEventID   int   `json:"shooting_event_id"`
+}
 
+type BuildingDiscipline struct {
+	ID          int    `json:"id"`
+	Code        string `json:"code"`
+	DisplayName string `json:"display_name"`
+}
 
+type BuildingEvent struct {
+	ID          int    `json:"id"`
+	Code        string `json:"code"`
+	DisplayName string `json:"display_name"`
+}
 
-
-
-
-
-
-
-
+type AcademyBuilding struct {
+	ID           int64                `json:"id"`
+	AcademyID    string               `json:"academy_id"`
+	BuildingName string               `json:"building_name"`
+	IsActive     bool                 `json:"is_active"`
+	Disciplines  []BuildingDiscipline `json:"disciplines"`
+	Events       []BuildingEvent      `json:"events"`
+}

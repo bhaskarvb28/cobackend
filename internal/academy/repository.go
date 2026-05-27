@@ -319,3 +319,365 @@ func GetAcademiesRepository(
 		HasPrevious: query.Page > 1,
 	}, nil
 }
+
+func CreateAcademyBuildingRepository(
+	ctx context.Context,
+	academyID string,
+	input CreateAcademyBuildingInput,
+) (*AcademyBuildingResponse, error) {
+
+	var academyBuilding AcademyBuildingResponse
+
+	err := db.DB.QueryRow(
+		ctx,
+		`
+		INSERT INTO academy_buildings (
+			academy_id,
+			building_name
+		)
+		VALUES (
+			$1,
+			$2
+		)
+		RETURNING
+			id,
+			academy_id,
+			building_name,
+			is_active
+		`,
+		academyID,
+		input.BuildingName,
+	).Scan(
+		&academyBuilding.ID,
+		&academyBuilding.AcademyID,
+		&academyBuilding.BuildingName,
+		&academyBuilding.IsActive,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &academyBuilding, nil
+}
+
+func CheckAcademyBuildingOwnershipRepository(
+	ctx context.Context,
+	buildingID int64,
+	academyID string,
+) (bool, error) {
+
+	var exists bool
+
+	err := db.DB.QueryRow(
+		ctx,
+		`
+		SELECT EXISTS (
+			SELECT 1
+			FROM academy_buildings
+			WHERE id = $1
+			AND academy_id = $2
+		)
+		`,
+		buildingID,
+		academyID,
+	).Scan(
+		&exists,
+	)
+
+	if err != nil {
+		return false, err
+	}
+
+	return exists, nil
+}
+
+func AddAcademyBuildingDisciplineRepository(
+	ctx context.Context,
+	buildingID int64,
+	disciplineID int,
+) (*AcademyBuildingDisciplineResponse, error) {
+
+	var response AcademyBuildingDisciplineResponse
+
+	err := db.DB.QueryRow(
+		ctx,
+		`
+		INSERT INTO academy_building_disciplines (
+			academy_building_id,
+			discipline_id
+		)
+		VALUES (
+			$1,
+			$2
+		)
+		RETURNING
+			academy_building_id,
+			discipline_id
+		`,
+		buildingID,
+		disciplineID,
+	).Scan(
+		&response.AcademyBuildingID,
+		&response.DisciplineID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &response, nil
+}
+
+// ============================================================================
+// repository.go
+// ============================================================================
+
+func AddAcademyBuildingEventRepository(
+	ctx context.Context,
+	buildingID int64,
+	shootingEventID int,
+) (*AcademyBuildingEventResponse, error) {
+
+	var response AcademyBuildingEventResponse
+
+	err := db.DB.QueryRow(
+		ctx,
+		`
+		INSERT INTO academy_building_events (
+			academy_building_id,
+			shooting_event_id
+		)
+		VALUES (
+			$1,
+			$2
+		)
+		RETURNING
+			academy_building_id,
+			shooting_event_id
+		`,
+		buildingID,
+		shootingEventID,
+	).Scan(
+		&response.AcademyBuildingID,
+		&response.ShootingEventID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &response, nil
+}
+
+// ============================================================================
+// repository.go
+// ============================================================================
+
+func GetAcademyBuildingsRepository(
+	ctx context.Context,
+	academyID string,
+) ([]AcademyBuilding, error) {
+
+	// ----------------------------------------------------------
+	// Get Buildings
+	// ----------------------------------------------------------
+
+	rows, err := db.DB.Query(
+		ctx,
+		`
+		SELECT
+			id,
+			academy_id,
+			building_name,
+			is_active
+		FROM academy_buildings
+		WHERE academy_id = $1
+		ORDER BY id DESC
+		`,
+		academyID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	buildings := []AcademyBuilding{}
+
+	for rows.Next() {
+
+		var building AcademyBuilding
+
+		err := rows.Scan(
+			&building.ID,
+			&building.AcademyID,
+			&building.BuildingName,
+			&building.IsActive,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		// ----------------------------------------------------------
+		// Get Building Disciplines
+		// ----------------------------------------------------------
+
+		disciplines, err := GetAcademyBuildingDisciplinesRepository(
+			ctx,
+			building.ID,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		building.Disciplines = disciplines
+
+		// ----------------------------------------------------------
+		// Get Building Events
+		// ----------------------------------------------------------
+
+		events, err := GetAcademyBuildingEventsRepository(
+			ctx,
+			building.ID,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		building.Events = events
+
+		buildings = append(
+			buildings,
+			building,
+		)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return buildings, nil
+}
+
+func GetAcademyBuildingDisciplinesRepository(
+	ctx context.Context,
+	buildingID int64,
+) ([]BuildingDiscipline, error) {
+
+	rows, err := db.DB.Query(
+		ctx,
+		`
+		SELECT
+			d.id,
+			d.code,
+			d.display_name
+		FROM academy_building_disciplines abd
+
+		INNER JOIN disciplines d
+			ON d.id = abd.discipline_id
+
+		WHERE abd.academy_building_id = $1
+
+		ORDER BY d.display_name
+		`,
+		buildingID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	disciplines := []BuildingDiscipline{}
+
+	for rows.Next() {
+
+		var discipline BuildingDiscipline
+
+		err := rows.Scan(
+			&discipline.ID,
+			&discipline.Code,
+			&discipline.DisplayName,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		disciplines = append(
+			disciplines,
+			discipline,
+		)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return disciplines, nil
+}
+
+func GetAcademyBuildingEventsRepository(
+	ctx context.Context,
+	buildingID int64,
+) ([]BuildingEvent, error) {
+
+	rows, err := db.DB.Query(
+		ctx,
+		`
+		SELECT
+			se.id,
+			se.code,
+			se.display_name
+		FROM academy_building_events abe
+
+		INNER JOIN shooting_events se
+			ON se.id = abe.shooting_event_id
+
+		WHERE abe.academy_building_id = $1
+
+		ORDER BY se.display_name
+		`,
+		buildingID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	events := []BuildingEvent{}
+
+	for rows.Next() {
+
+		var event BuildingEvent
+
+		err := rows.Scan(
+			&event.ID,
+			&event.Code,
+			&event.DisplayName,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		events = append(
+			events,
+			event,
+		)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return events, nil
+}

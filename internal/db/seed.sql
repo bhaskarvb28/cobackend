@@ -662,3 +662,227 @@ VALUES (
     CURRENT_DATE,
     TRUE
 );
+
+
+
+--------------------------------------------------------------------------------------------------------------
+-- SHOOTING DISTANCES SEED
+--------------------------------------------------------------------------------------------------------------
+
+INSERT INTO shooting_distances (
+    meters
+)
+VALUES
+    (10),
+    (25),
+    (50),
+    (300);
+
+--------------------------------------------------------------------------------------------------------------
+-- SHOOTING EVENTS SEED
+--------------------------------------------------------------------------------------------------------------
+
+INSERT INTO shooting_events (
+    discipline_id,
+    code,
+    display_name,
+    distance_id
+)
+VALUES
+
+-- RIFLE
+(
+    (
+        SELECT id
+        FROM disciplines
+        WHERE code = 'RIFLE'
+    ),
+    'AIR_RIFLE_10M',
+    '10M Air Rifle',
+    (
+        SELECT id
+        FROM shooting_distances
+        WHERE meters = 10
+    )
+),
+
+(
+    (
+        SELECT id
+        FROM disciplines
+        WHERE code = 'RIFLE'
+    ),
+    'RIFLE_PRONE_50M',
+    '50M Rifle Prone',
+    (
+        SELECT id
+        FROM shooting_distances
+        WHERE meters = 50
+    )
+),
+
+(
+    (
+        SELECT id
+        FROM disciplines
+        WHERE code = 'RIFLE'
+    ),
+    'RIFLE_3P_50M',
+    '50M Rifle 3P',
+    (
+        SELECT id
+        FROM shooting_distances
+        WHERE meters = 50
+    )
+),
+
+(
+    (
+        SELECT id
+        FROM disciplines
+        WHERE code = 'RIFLE'
+    ),
+    'RIFLE_300M',
+    '300M Rifle',
+    (
+        SELECT id
+        FROM shooting_distances
+        WHERE meters = 300
+    )
+),
+
+-- PISTOL
+(
+    (
+        SELECT id
+        FROM disciplines
+        WHERE code = 'PISTOL'
+    ),
+    'OPEN_SIGHT_PISTOL',
+    'Open Sight Pistol',
+    NULL
+),
+
+(
+    (
+        SELECT id
+        FROM disciplines
+        WHERE code = 'PISTOL'
+    ),
+    'AIR_PISTOL_10M',
+    '10M Air Pistol',
+    (
+        SELECT id
+        FROM shooting_distances
+        WHERE meters = 10
+    )
+),
+
+(
+    (
+        SELECT id
+        FROM disciplines
+        WHERE code = 'PISTOL'
+    ),
+    'SPORT_PISTOL_25M',
+    '25M Sport Pistol',
+    (
+        SELECT id
+        FROM shooting_distances
+        WHERE meters = 25
+    )
+),
+
+(
+    (
+        SELECT id
+        FROM disciplines
+        WHERE code = 'PISTOL'
+    ),
+    'STANDARD_PISTOL_25M',
+    '25M Standard Pistol',
+    (
+        SELECT id
+        FROM shooting_distances
+        WHERE meters = 25
+    )
+),
+
+(
+    (
+        SELECT id
+        FROM disciplines
+        WHERE code = 'PISTOL'
+    ),
+    'RAPID_FIRE_PISTOL_25M',
+    '25M Rapid Fire Pistol',
+    (
+        SELECT id
+        FROM shooting_distances
+        WHERE meters = 25
+    )
+),
+
+(
+    (
+        SELECT id
+        FROM disciplines
+        WHERE code = 'PISTOL'
+    ),
+    'CENTRE_FIRE_PISTOL_25M',
+    '25M Centre Fire Pistol',
+    (
+        SELECT id
+        FROM shooting_distances
+        WHERE meters = 25
+    )
+),
+
+(
+    (
+        SELECT id
+        FROM disciplines
+        WHERE code = 'PISTOL'
+    ),
+    'PISTOL_50M',
+    '50M Pistol',
+    (
+        SELECT id
+        FROM shooting_distances
+        WHERE meters = 50
+    )
+),
+
+-- SHOTGUN
+(
+    (
+        SELECT id
+        FROM disciplines
+        WHERE code = 'SHOTGUN'
+    ),
+    'TRAP',
+    'Trap',
+    NULL
+),
+
+(
+    (
+        SELECT id
+        FROM disciplines
+        WHERE code = 'SHOTGUN'
+    ),
+    'SKEET',
+    'Skeet',
+    NULL
+),
+
+(
+    (
+        SELECT id
+        FROM disciplines
+        WHERE code = 'SHOTGUN'
+    ),
+    'DOUBLE_TRAP',
+    'Double Trap',
+    NULL
+);

@@ -47,6 +47,16 @@ var (
 	ErrAcademyNameRequired = errors.New("academy name required")
 	ErrAddressRequired = errors.New("academy address required")
 
+	// Academy Building
+	ErrAcademyBuildingNameRequired = errors.New("academy building name required")
+	ErrUnauthorizedBuildingAccess = errors.New("unauthorized building access")
+
+	// Discipline
+	ErrInvalidDisciplineID = errors.New("invalid discipline id")
+
+	// Shooting Event
+	ErrInvalidShootingEventID = errors.New("invalid shooting event id")
+
 	// Roles
 	ErrRoleNotFound = errors.New("role not found")
 	ErrInvalidRole = errors.New("not a valid role")

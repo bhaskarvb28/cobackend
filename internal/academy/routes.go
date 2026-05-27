@@ -8,7 +8,7 @@ import (
 
 func RegisterRoutes(r chi.Router) {
 
-	r.Route("/academy", func(r chi.Router) {
+	r.Route("/academies", func(r chi.Router) {
 
 		r.Use(middleware.AuthMiddleware)
 
@@ -20,6 +20,27 @@ func RegisterRoutes(r chi.Router) {
 
 			r.Post("/", CreateAcademyHandler)
 			r.Get("/", GetAcademiesHandler)
+
+		})
+
+		r.Route("/buildings", func(r chi.Router) {
+
+			r.Use(middleware.RequireRole(
+				"academy_admin",
+			))
+
+			r.Post("/", CreateAcademyBuildingHandler)
+			r.Get("/", GetAcademyBuildingsHandler)
+
+			r.Post(
+				"/{buildingID}/disciplines",
+				AddAcademyBuildingDisciplineHandler,
+			)
+
+			r.Post(
+				"/{buildingID}/events",
+				AddAcademyBuildingEventHandler,
+			)
 		})
 	})
 }

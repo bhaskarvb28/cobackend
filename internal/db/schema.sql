@@ -1020,3 +1020,183 @@ ON player_coach_assignments(player_user_id);
 CREATE INDEX idx_player_coach_assignments_coach_user_id
 ON player_coach_assignments(coach_user_id);
 
+
+--------------------------------------------------------------------------------------------------------------
+-- SHOOTING DISTANCES
+--------------------------------------------------------------------------------------------------------------
+
+CREATE TABLE shooting_distances (
+
+    id SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+
+    meters SMALLINT UNIQUE NOT NULL
+        CHECK (meters > 0),
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+--------------------------------------------------------------------------------------------------------------
+-- SHOOTING EVENTS
+--------------------------------------------------------------------------------------------------------------
+
+CREATE TABLE shooting_events (
+
+    id SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+
+    discipline_id SMALLINT NOT NULL,
+
+    code CITEXT UNIQUE NOT NULL
+        CHECK (length(trim(code)) > 0),
+
+    display_name VARCHAR(100) NOT NULL
+        CHECK (length(trim(display_name)) > 0),
+
+    distance_id SMALLINT,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_shooting_events_discipline_id
+        FOREIGN KEY (discipline_id)
+        REFERENCES disciplines(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_shooting_events_distance_id
+        FOREIGN KEY (distance_id)
+        REFERENCES shooting_distances(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE
+);
+
+--------------------------------------------------------------------------------------------------------------
+-- SHOOTING EVENTS INDEXES
+--------------------------------------------------------------------------------------------------------------
+
+CREATE INDEX idx_shooting_events_discipline_id
+ON shooting_events(discipline_id);
+
+CREATE INDEX idx_shooting_events_distance_id
+ON shooting_events(distance_id);
+
+--------------------------------------------------------------------------------------------------------------
+-- ACADEMY BUILDINGS
+--------------------------------------------------------------------------------------------------------------
+
+CREATE TABLE academy_buildings (
+
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+
+    academy_id UUID NOT NULL,
+
+    building_name VARCHAR(100) NOT NULL
+        CHECK (length(trim(building_name)) > 0),
+
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_academy_buildings_academy_id
+        FOREIGN KEY (academy_id)
+        REFERENCES academies(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+);
+
+--------------------------------------------------------------------------------------------------------------
+-- ACADEMY BUILDINGS INDEXES
+--------------------------------------------------------------------------------------------------------------
+
+CREATE INDEX idx_academy_buildings_academy_id
+ON academy_buildings(academy_id);
+
+--------------------------------------------------------------------------------------------------------------
+-- ACADEMY BUILDINGS UPDATED_AT TRIGGER
+--------------------------------------------------------------------------------------------------------------
+
+CREATE TRIGGER academy_buildings_set_updated_at
+BEFORE UPDATE ON academy_buildings
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+--------------------------------------------------------------------------------------------------------------
+-- ACADEMY BUILDING DISCIPLINES
+--------------------------------------------------------------------------------------------------------------
+
+CREATE TABLE academy_building_disciplines (
+
+    academy_building_id BIGINT NOT NULL,
+
+    discipline_id SMALLINT NOT NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (
+        academy_building_id,
+        discipline_id
+    ),
+
+    CONSTRAINT fk_academy_building_disciplines_building_id
+        FOREIGN KEY (academy_building_id)
+        REFERENCES academy_buildings(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_academy_building_disciplines_discipline_id
+        FOREIGN KEY (discipline_id)
+        REFERENCES disciplines(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE
+);
+
+--------------------------------------------------------------------------------------------------------------
+-- ACADEMY BUILDING DISCIPLINES INDEXES
+--------------------------------------------------------------------------------------------------------------
+
+CREATE INDEX idx_academy_building_disciplines_building_id
+ON academy_building_disciplines(academy_building_id);
+
+CREATE INDEX idx_academy_building_disciplines_discipline_id
+ON academy_building_disciplines(discipline_id);
+
+--------------------------------------------------------------------------------------------------------------
+-- ACADEMY BUILDING EVENTS
+--------------------------------------------------------------------------------------------------------------
+
+CREATE TABLE academy_building_events (
+
+    academy_building_id BIGINT NOT NULL,
+
+    shooting_event_id SMALLINT NOT NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    PRIMARY KEY (
+        academy_building_id,
+        shooting_event_id
+    ),
+
+    CONSTRAINT fk_academy_building_events_building_id
+        FOREIGN KEY (academy_building_id)
+        REFERENCES academy_buildings(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_academy_building_events_shooting_event_id
+        FOREIGN KEY (shooting_event_id)
+        REFERENCES shooting_events(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE
+);
+
+--------------------------------------------------------------------------------------------------------------
+-- ACADEMY BUILDING EVENTS INDEXES
+--------------------------------------------------------------------------------------------------------------
+
+CREATE INDEX idx_academy_building_events_building_id
+ON academy_building_events(academy_building_id);
+
+CREATE INDEX idx_academy_building_events_shooting_event_id
+ON academy_building_events(shooting_event_id);
+

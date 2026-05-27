@@ -6,6 +6,7 @@ import (
 
 	"cobackend/internal/districtAdmin"
 	"cobackend/internal/shared"
+	"cobackend/internal/academyAdmin"
 )
 
 func CreateAcademyService(
@@ -34,7 +35,7 @@ func CreateAcademyService(
 	}
 
 	// ----------------------------------------------------------
-	// Get District Admin
+	// Get District Admin Region
 	// ----------------------------------------------------------
 
 	districtAdminRegion, err := districtAdmin.GetDistrictAdminRegion(
@@ -78,4 +79,224 @@ func GetAcademiesService(
 		ctx,
 		query,
 	)
+}
+
+func CreateAcademyBuildingService(
+	ctx context.Context,
+	userID string,
+	input CreateAcademyBuildingInput,
+) (*AcademyBuildingResponse, error) {
+
+	// ----------------------------------------------------------
+	// Normalize Input
+	// ----------------------------------------------------------
+
+	input.BuildingName = strings.TrimSpace(
+		input.BuildingName,
+	)
+
+	// ----------------------------------------------------------
+	// Validate Input
+	// ----------------------------------------------------------
+
+	if input.BuildingName == "" {
+		return nil, shared.ErrAcademyBuildingNameRequired
+	}
+
+	// ----------------------------------------------------------
+	// Get Academy Admin Academy
+	// ----------------------------------------------------------
+
+	academyID, err := academyAdmin.GetAcademyAdminAcademyID(
+		ctx,
+		userID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// ----------------------------------------------------------
+	// Create Building
+	// ----------------------------------------------------------
+
+	academyBuilding, err := CreateAcademyBuildingRepository(
+		ctx,
+		academyID,
+		input,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return academyBuilding, nil
+}
+
+func AddAcademyBuildingDisciplineService(
+	ctx context.Context,
+	userID string,
+	buildingID int64,
+	input AddAcademyBuildingDisciplineInput,
+) (*AcademyBuildingDisciplineResponse, error) {
+
+	// ----------------------------------------------------------
+	// Validate Input
+	// ----------------------------------------------------------
+
+	if input.DisciplineID <= 0 {
+		return nil, shared.ErrInvalidDisciplineID
+	}
+
+	// ----------------------------------------------------------
+	// Get Academy Admin Academy
+	// ----------------------------------------------------------
+
+	academyID, err := academyAdmin.GetAcademyAdminAcademyID(
+		ctx,
+		userID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// ----------------------------------------------------------
+	// Validate Building Ownership
+	// ----------------------------------------------------------
+
+	isOwned, err := CheckAcademyBuildingOwnershipRepository(
+		ctx,
+		buildingID,
+		academyID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if !isOwned {
+		return nil, shared.ErrUnauthorizedBuildingAccess
+	}
+
+	// ----------------------------------------------------------
+	// Add Discipline
+	// ----------------------------------------------------------
+
+	response, err := AddAcademyBuildingDisciplineRepository(
+		ctx,
+		buildingID,
+		input.DisciplineID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+// ============================================================================
+// service.go
+// ============================================================================
+
+func AddAcademyBuildingEventService(
+	ctx context.Context,
+	userID string,
+	buildingID int64,
+	input AddAcademyBuildingEventInput,
+) (*AcademyBuildingEventResponse, error) {
+
+	// ----------------------------------------------------------
+	// Validate Input
+	// ----------------------------------------------------------
+
+	if input.ShootingEventID <= 0 {
+		return nil, shared.ErrInvalidShootingEventID
+	}
+
+	// ----------------------------------------------------------
+	// Get Academy Admin Academy
+	// ----------------------------------------------------------
+
+	academyID, err := academyAdmin.GetAcademyAdminAcademyID(
+		ctx,
+		userID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// ----------------------------------------------------------
+	// Validate Building Ownership
+	// ----------------------------------------------------------
+
+	isOwned, err := CheckAcademyBuildingOwnershipRepository(
+		ctx,
+		buildingID,
+		academyID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if !isOwned {
+		return nil, shared.ErrUnauthorizedBuildingAccess
+	}
+
+	// ----------------------------------------------------------
+	// Add Building Event
+	// ----------------------------------------------------------
+
+	response, err := AddAcademyBuildingEventRepository(
+		ctx,
+		buildingID,
+		input.ShootingEventID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+// ============================================================================
+// service.go
+// ============================================================================
+
+func GetAcademyBuildingsService(
+	ctx context.Context,
+	userID string,
+) ([]AcademyBuilding, error) {
+
+	// ----------------------------------------------------------
+	// Get Academy Admin Academy
+	// ----------------------------------------------------------
+
+	academyID, err := academyAdmin.GetAcademyAdminAcademyID(
+		ctx,
+		userID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// ----------------------------------------------------------
+	// Get Buildings
+	// ----------------------------------------------------------
+
+	buildings, err := GetAcademyBuildingsRepository(
+		ctx,
+		academyID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return buildings, nil
 }

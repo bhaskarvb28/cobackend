@@ -388,3 +388,26 @@ func DeleteAcademyAdminRepository(
 
 	return nil
 }
+
+func GetAcademyAdminAcademyID(
+	ctx context.Context,
+	profileID string,
+) (string, error) {
+
+	var academyID string
+
+	err := db.DB.QueryRow(
+		ctx,
+		`
+		SELECT 
+		academy_id
+		FROM academy_admins
+		WHERE user_id = $1
+		`,
+		profileID,
+	).Scan(
+		&academyID,
+	)
+
+	return academyID, err
+}
