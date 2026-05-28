@@ -11,7 +11,13 @@ func RegisterRoute(r chi.Router){
 		r.Use(middleware.AuthMiddleware)
 
 		r.Use(middleware.RequireRole(
+			"state_admin",
+			
+			"district_admin",
+			"district_coach",
+
 			"academy_admin",
+			"academy_coach",
 		))
 
 		r.Get("/", GetDisciplinesHandler)

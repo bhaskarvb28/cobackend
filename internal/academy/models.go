@@ -91,3 +91,20 @@ type AcademyBuilding struct {
 	Disciplines  []BuildingDiscipline `json:"disciplines"`
 	Events       []BuildingEvent      `json:"events"`
 }
+
+type AddAcademyBuildingLaneInput struct {
+	LaneName string `json:"lane_name" validate:"required,max=50"`
+}
+
+type AcademyBuildingLaneResponse struct {
+	ID                 int64  `json:"id"`
+	AcademyBuildingID  int64  `json:"academy_building_id"`
+	LaneName           string `json:"lane_name"`
+	IsUnderMaintenance bool   `json:"is_under_maintenance"`
+	IsOccupied         bool   `json:"is_occupied"`
+}
+
+type AvailableLaneResponse struct {
+	ID       int64  `json:"id"`
+	LaneName string `json:"lane_name"`
+}

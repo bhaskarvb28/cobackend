@@ -1,14 +1,15 @@
 package player
 
-// import (
-// 	"cobackend/internal/middleware"
-// 	"cobackend/internal/shared"
-// 	"cobackend/internal/utils"
+import (
+	"cobackend/internal/middleware"
+	"cobackend/internal/shared"
+	"cobackend/internal/utils"
+	"strconv"
 // 	"encoding/json"
 // 	"errors"
 // 	"fmt"
-// 	"net/http"
-// )
+	"net/http"
+)
 
 // func InvitePlayerHandler(w http.ResponseWriter, r *http.Request) {
 // 	var input InvitePlayerInput
@@ -82,3 +83,132 @@ package player
 // 		Data:    inviteLink,
 // 	})
 // }
+
+func GetAvailableShootingEventsHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	disciplineIDParam := r.URL.Query().Get(
+		"discipline_id",
+	)
+
+	disciplineID, err := strconv.ParseInt(
+		disciplineIDParam,
+		10,
+		16,
+	)
+
+	if err != nil || disciplineID <= 0 {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "invalid discipline id",
+			},
+		)
+
+		return
+	}
+
+	authUserID := r.Context().
+		Value(middleware.UserIDKey).
+		(string)
+
+	response, err := GetAvailableShootingEventsService(
+		r.Context(),
+		authUserID,
+		int16(disciplineID),
+	)
+
+	if err != nil {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: err.Error(),
+			},
+		)
+
+		return
+	}
+
+	utils.WriteJSON(
+		w,
+		http.StatusOK,
+		shared.APIResponse{
+			Success: true,
+			Message: "shooting events fetched successfully",
+			Data:    response,
+		},
+	)
+}
+
+func GetCompatibleBuildingsHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	shootingEventIDParam := r.URL.Query().Get(
+		"shooting_event_id",
+	)
+
+	shootingEventID, err := strconv.ParseInt(
+		shootingEventIDParam,
+		10,
+		16,
+	)
+
+	if err != nil || shootingEventID <= 0 {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "invalid shooting event id",
+			},
+		)
+
+		return
+	}
+
+	authUserID := r.Context().
+		Value(middleware.UserIDKey).
+		(string)
+
+	response, err := GetCompatibleBuildingsService(
+		r.Context(),
+		authUserID,
+		int16(shootingEventID),
+	)
+
+	if err != nil {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: err.Error(),
+			},
+		)
+
+		return
+	}
+
+	utils.WriteJSON(
+		w,
+		http.StatusOK,
+		shared.APIResponse{
+			Success: true,
+			Message: "compatible buildings fetched successfully",
+			Data:    response,
+		},
+	)
+}
+

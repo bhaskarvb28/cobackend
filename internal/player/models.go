@@ -1,5 +1,9 @@
 package player
 
+import (
+	"time"
+)
+
 type InvitePlayerInput struct {
 	Email           string `json:"email"`
 	StateID         int    `json:"state_id"`
@@ -13,3 +17,18 @@ type CreatePlayerInput struct {
 	AcademyID    string
 	RegisteredBy string
 }
+
+type ShootingEventResponse struct {
+	ID          int16   `json:"id"`
+	Code        string  `json:"code"`
+	DisplayName string  `json:"display_name"`
+	Distance    *int16  `json:"distance,omitempty"`
+}
+
+type CompatibleBuildingResponse struct {
+	ID           int64     `json:"id"`
+	BuildingName string    `json:"building_name"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}
+

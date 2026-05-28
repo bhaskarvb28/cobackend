@@ -1200,3 +1200,279 @@ ON academy_building_events(academy_building_id);
 CREATE INDEX idx_academy_building_events_shooting_event_id
 ON academy_building_events(shooting_event_id);
 
+CREATE OR REPLACE FUNCTION validate_building_event_discipline()
+RETURNS TRIGGER AS $$
+BEGIN
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM shooting_events se
+        INNER JOIN academy_building_disciplines abd
+            ON abd.discipline_id = se.discipline_id
+        WHERE
+            abd.academy_building_id = NEW.academy_building_id
+            AND se.id = NEW.shooting_event_id
+    ) THEN
+        RAISE EXCEPTION
+            'Building does not support the discipline of this shooting event';
+    END IF;
+
+    RETURN NEW;
+
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER academy_building_events_validate_discipline
+BEFORE INSERT OR UPDATE
+ON academy_building_events
+FOR EACH ROW
+EXECUTE FUNCTION validate_building_event_discipline();
+
+--------------------------------------------------------------------------------------------------------------
+-- ACADEMY BUILDING LANES
+--------------------------------------------------------------------------------------------------------------
+
+CREATE TABLE academy_building_lanes (
+
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+
+    academy_building_id BIGINT NOT NULL,
+
+    lane_name VARCHAR(50) NOT NULL
+        CHECK (length(trim(lane_name)) > 0),
+
+    is_under_maintenance BOOLEAN NOT NULL DEFAULT FALSE,
+
+    is_occupied BOOLEAN NOT NULL DEFAULT FALSE,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_academy_building_lanes_building_id
+        FOREIGN KEY (academy_building_id)
+        REFERENCES academy_buildings(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    CONSTRAINT unique_lane_per_building
+        UNIQUE (
+            academy_building_id,
+            lane_name
+        )
+);
+
+--------------------------------------------------------------------------------------------------------------
+-- ACADEMY BUILDING LANES INDEXES
+--------------------------------------------------------------------------------------------------------------
+
+CREATE INDEX idx_academy_building_lanes_building_id
+ON academy_building_lanes(academy_building_id);
+
+CREATE INDEX idx_academy_building_lanes_is_under_maintenance
+ON academy_building_lanes(is_under_maintenance);
+
+CREATE INDEX idx_academy_building_lanes_is_occupied
+ON academy_building_lanes(is_occupied);
+
+--------------------------------------------------------------------------------------------------------------
+-- ACADEMY BUILDING LANES UPDATED_AT TRIGGER
+--------------------------------------------------------------------------------------------------------------
+
+CREATE TRIGGER academy_building_lanes_set_updated_at
+BEFORE UPDATE ON academy_building_lanes
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+--------------------------------------------------------------------------------------------------------------
+-- PRACTICE SESSION STATUS TYPE
+--------------------------------------------------------------------------------------------------------------
+
+CREATE TYPE practice_session_status_type AS ENUM (
+    'active',
+    'completed'
+);
+
+--------------------------------------------------------------------------------------------------------------
+-- PRACTICE SESSIONS
+--------------------------------------------------------------------------------------------------------------
+
+CREATE TABLE practice_sessions (
+
+    id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+
+    -- Player starting the practice session
+    player_user_id UUID NOT NULL,
+
+    -- Physical lane being occupied
+    academy_building_lane_id BIGINT NOT NULL,
+
+    -- Selected shooting event for this session
+    shooting_event_id SMALLINT NOT NULL,
+
+    status practice_session_status_type NOT NULL DEFAULT 'active',
+
+    total_score NUMERIC(10,2) NOT NULL DEFAULT 0
+        CHECK (total_score >= 0),
+
+    total_shot_count INTEGER NOT NULL DEFAULT 0
+        CHECK (total_shot_count >= 0),
+
+    started_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    ended_at TIMESTAMPTZ,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_practice_sessions_player_user_id
+        FOREIGN KEY (player_user_id)
+        REFERENCES players(user_id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_practice_sessions_lane_id
+        FOREIGN KEY (academy_building_lane_id)
+        REFERENCES academy_building_lanes(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_practice_sessions_shooting_event_id
+        FOREIGN KEY (shooting_event_id)
+        REFERENCES shooting_events(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+
+    CONSTRAINT check_completed_session_end_time
+        CHECK (
+            (
+                status = 'active'
+                AND ended_at IS NULL
+            )
+            OR
+            (
+                status = 'completed'
+                AND ended_at IS NOT NULL
+            )
+        )
+);
+
+--------------------------------------------------------------------------------------------------------------
+-- PRACTICE SESSIONS INDEXES
+--------------------------------------------------------------------------------------------------------------
+
+CREATE INDEX idx_practice_sessions_player_user_id
+ON practice_sessions(player_user_id);
+
+CREATE INDEX idx_practice_sessions_lane_id
+ON practice_sessions(academy_building_lane_id);
+
+CREATE INDEX idx_practice_sessions_shooting_event_id
+ON practice_sessions(shooting_event_id);
+
+CREATE INDEX idx_practice_sessions_status
+ON practice_sessions(status);
+
+CREATE INDEX idx_practice_sessions_started_at
+ON practice_sessions(started_at);
+
+--------------------------------------------------------------------------------------------------------------
+-- ACTIVE SESSION UNIQUENESS
+--------------------------------------------------------------------------------------------------------------
+
+CREATE UNIQUE INDEX unique_active_lane_session
+ON practice_sessions(academy_building_lane_id)
+WHERE status = 'active';
+
+CREATE UNIQUE INDEX unique_active_player_session
+ON practice_sessions(player_user_id)
+WHERE status = 'active';
+
+--------------------------------------------------------------------------------------------------------------
+-- PRACTICE SESSION VALIDATION
+--------------------------------------------------------------------------------------------------------------
+
+CREATE OR REPLACE FUNCTION validate_practice_session()
+RETURNS TRIGGER AS $$
+BEGIN
+
+    ----------------------------------------------------------------------------------------------------------
+    -- Validate Player Belongs To Same Academy
+    ----------------------------------------------------------------------------------------------------------
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM players p
+
+        INNER JOIN academy_building_lanes abl
+            ON abl.id = NEW.academy_building_lane_id
+
+        INNER JOIN academy_buildings ab
+            ON ab.id = abl.academy_building_id
+
+        WHERE
+            p.user_id = NEW.player_user_id
+            AND p.academy_id = ab.academy_id
+    ) THEN
+        RAISE EXCEPTION
+            'Player does not belong to this academy';
+    END IF;
+
+    ----------------------------------------------------------------------------------------------------------
+    -- Validate Building Supports Shooting Event
+    ----------------------------------------------------------------------------------------------------------
+
+    IF NOT EXISTS (
+        SELECT 1
+        FROM academy_building_lanes abl
+
+        INNER JOIN academy_building_events abe
+            ON abe.academy_building_id = abl.academy_building_id
+
+        WHERE
+            abl.id = NEW.academy_building_lane_id
+            AND abe.shooting_event_id = NEW.shooting_event_id
+    ) THEN
+        RAISE EXCEPTION
+            'Building does not support this shooting event';
+    END IF;
+
+    ----------------------------------------------------------------------------------------------------------
+    -- Validate Lane Not Under Maintenance
+    ----------------------------------------------------------------------------------------------------------
+
+    IF EXISTS (
+        SELECT 1
+        FROM academy_building_lanes abl
+        WHERE
+            abl.id = NEW.academy_building_lane_id
+            AND abl.is_under_maintenance = TRUE
+    ) THEN
+        RAISE EXCEPTION
+            'Lane is currently under maintenance';
+    END IF;
+
+    RETURN NEW;
+
+END;
+$$ LANGUAGE plpgsql;
+
+--------------------------------------------------------------------------------------------------------------
+-- PRACTICE SESSION VALIDATION TRIGGER
+--------------------------------------------------------------------------------------------------------------
+
+CREATE TRIGGER practice_sessions_validate
+BEFORE INSERT
+ON practice_sessions
+FOR EACH ROW
+EXECUTE FUNCTION validate_practice_session();
+
+--------------------------------------------------------------------------------------------------------------
+-- PRACTICE SESSIONS UPDATED_AT TRIGGER
+--------------------------------------------------------------------------------------------------------------
+
+CREATE TRIGGER practice_sessions_set_updated_at
+BEFORE UPDATE ON practice_sessions
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();

@@ -50,12 +50,23 @@ var (
 	// Academy Building
 	ErrAcademyBuildingNameRequired = errors.New("academy building name required")
 	ErrUnauthorizedBuildingAccess = errors.New("unauthorized building access")
+	ErrInvalidBuildingID = errors.New("invalid building id")
 
 	// Discipline
 	ErrInvalidDisciplineID = errors.New("invalid discipline id")
 
 	// Shooting Event
 	ErrInvalidShootingEventID = errors.New("invalid shooting event id")
+
+	// Lane
+	ErrLaneNameRequired = errors.New("lane name is required")
+	ErrLaneAlreadyExists = errors.New("lane already exists")
+	ErrAcademyBuildingNotFound = errors.New("academy building not found")
+	ErrInvalidLaneID = errors.New("invalid lane id")
+	ErrLaneAlreadyOccupied = errors.New("lane already occupied")
+
+	// Session
+	ErrPlayerAlreadyHasActiveSession = errors.New("player already has an active session")
 
 	// Roles
 	ErrRoleNotFound = errors.New("role not found")

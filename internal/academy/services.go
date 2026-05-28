@@ -300,3 +300,104 @@ func GetAcademyBuildingsService(
 
 	return buildings, nil
 }
+
+func AddAcademyBuildingLaneService(
+	ctx context.Context,
+	userID string,
+	buildingID int64,
+	input AddAcademyBuildingLaneInput,
+) (*AcademyBuildingLaneResponse, error) {
+
+	// ----------------------------------------------------------
+	// Normalize Input
+	// ----------------------------------------------------------
+
+	input.LaneName = strings.TrimSpace(
+		input.LaneName,
+	)
+
+	// ----------------------------------------------------------
+	// Validate Input
+	// ----------------------------------------------------------
+
+	if input.LaneName == "" {
+		return nil, shared.ErrLaneNameRequired
+	}
+
+	// ----------------------------------------------------------
+	// Get Academy Admin Academy
+	// ----------------------------------------------------------
+
+	academyID, err := academyAdmin.GetAcademyAdminAcademyID(
+		ctx,
+		userID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// ----------------------------------------------------------
+	// Validate Building Ownership
+	// ----------------------------------------------------------
+
+	isOwned, err := CheckAcademyBuildingOwnershipRepository(
+		ctx,
+		buildingID,
+		academyID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if !isOwned {
+		return nil, shared.ErrUnauthorizedBuildingAccess
+	}
+
+	// ----------------------------------------------------------
+	// Create Lane
+	// ----------------------------------------------------------
+
+	response, err := CreateAcademyBuildingLaneRepository(
+		ctx,
+		buildingID,
+		input,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
+}
+
+func GetAvailableLanesService(
+	ctx context.Context,
+	buildingID int64,
+) ([]AvailableLaneResponse, error) {
+
+	// ----------------------------------------------------------
+	// Validate Input
+	// ----------------------------------------------------------
+
+	if buildingID <= 0 {
+		return nil, shared.ErrInvalidBuildingID
+	}
+
+	// ----------------------------------------------------------
+	// Get Available Lanes
+	// ----------------------------------------------------------
+
+	lanes, err := GetAvailableLanesRepository(
+		ctx,
+		buildingID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return lanes, nil
+}
+

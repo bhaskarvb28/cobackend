@@ -1,14 +1,14 @@
 package player
 
-// import (
-// 	"context"
-// 	"crypto/rand"
-// 	"encoding/hex"
-// 	"fmt"
-// 	"net/http"
-// 	"os"
-// 	"strings"
-// 	"time"
+import (
+	"context"
+	// "crypto/rand"
+	// "encoding/hex"
+	// "fmt"
+	// "net/http"
+	// "os"
+	// "strings"
+	// "time"
 
 // 	"cobackend/internal/academy"
 // 	"cobackend/internal/districts"
@@ -16,10 +16,10 @@ package player
 // 	"cobackend/internal/mail"
 // 	"cobackend/internal/profile"
 // 	"cobackend/internal/roles"
-// 	"cobackend/internal/shared"
+	"cobackend/internal/shared"
 // 	"cobackend/internal/validation"
 // 	"cobackend/internal/academyCoach"
-// )
+)
 
 // func InvitePlayerService(
 // 	ctx context.Context,
@@ -292,3 +292,66 @@ package player
 
 // 	return inviteLink, nil
 // }
+
+func GetAvailableShootingEventsService(
+	ctx context.Context,
+	userID string,
+	disciplineID int16,
+) ([]ShootingEventResponse, error) {
+
+	// ----------------------------------------------------------
+	// Validate Input
+	// ----------------------------------------------------------
+
+	if disciplineID <= 0 {
+		return nil, shared.ErrInvalidDisciplineID
+	}
+
+	// ----------------------------------------------------------
+	// Get Available Shooting Events
+	// ----------------------------------------------------------
+
+	events, err := GetAvailableShootingEventsRepository(
+		ctx,
+		userID,
+		disciplineID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return events, nil
+}
+
+func GetCompatibleBuildingsService(
+	ctx context.Context,
+	userID string,
+	shootingEventID int16,
+) ([]CompatibleBuildingResponse, error) {
+
+	// ----------------------------------------------------------
+	// Validate Input
+	// ----------------------------------------------------------
+
+	if shootingEventID <= 0 {
+		return nil, shared.ErrInvalidShootingEventID
+	}
+
+	// ----------------------------------------------------------
+	// Get Compatible Buildings
+	// ----------------------------------------------------------
+
+	buildings, err := GetCompatibleBuildingsRepository(
+		ctx,
+		userID,
+		shootingEventID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return buildings, nil
+}
+

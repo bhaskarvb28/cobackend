@@ -3,6 +3,8 @@ package main
 import (
 	"cobackend/internal/academy"
 	"cobackend/internal/disciplines"
+	session "cobackend/internal/sessions"
+
 	// "cobackend/internal/academyAdmin"
 	// "cobackend/internal/academyCoach"
 	"cobackend/internal/auth"
@@ -17,7 +19,7 @@ import (
 	// "cobackend/internal/districtAdmin"
 	// "cobackend/internal/stateAdmin"
 
-	// "cobackend/internal/player"
+	"cobackend/internal/player"
 
 	"log"
 	"net/http"
@@ -53,6 +55,9 @@ func main() {
 		profile.RegisterRoutes(r)
 		disciplines.RegisterRoute(r)
 
+		player.RegisterRoutes(r)
+		session.RegisterRoutes(r)
+
 		// stateAdmin.RegisterRoutes(r)
 		// districtAdmin.RegisterRoutes(r)
 		// districtCoach.RegisterRoutes(r)
@@ -61,7 +66,6 @@ func main() {
 
 		// academyCoach.RegisterRoutes(r)
 
-		// player.RegisterRoutes(r)
 
 	})
 

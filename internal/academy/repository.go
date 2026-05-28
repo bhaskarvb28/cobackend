@@ -4,8 +4,11 @@ import (
 	"context"
 
 	"cobackend/internal/db"
+	"cobackend/internal/shared"
 	"math"
 	"strconv"
+
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 func CreateAcademyRepository(
@@ -680,4 +683,130 @@ func GetAcademyBuildingEventsRepository(
 	}
 
 	return events, nil
+}
+
+func CreateAcademyBuildingLaneRepository(
+	ctx context.Context,
+	buildingID int64,
+	input AddAcademyBuildingLaneInput,
+) (*AcademyBuildingLaneResponse, error) {
+
+	query := `
+		INSERT INTO academy_building_lanes (
+			academy_building_id,
+			lane_name
+		)
+		VALUES (
+			$1,
+			$2
+		)
+		RETURNING
+			id,
+			academy_building_id,
+			lane_name,
+			is_under_maintenance,
+			is_occupied
+	`
+
+	var lane AcademyBuildingLaneResponse
+
+	err := db.DB.QueryRow(
+		ctx,
+		query,
+		buildingID,
+		input.LaneName,
+	).Scan(
+		&lane.ID,
+		&lane.AcademyBuildingID,
+		&lane.LaneName,
+		&lane.IsUnderMaintenance,
+		&lane.IsOccupied,
+	)
+
+	if err != nil {
+
+		if pgError, ok := err.(*pgconn.PgError); ok {
+
+			switch pgError.Code {
+
+			case "23505":
+				return nil, shared.ErrLaneAlreadyExists
+
+			case "23503":
+				return nil, shared.ErrAcademyBuildingNotFound
+			}
+		}
+
+		return nil, err
+	}
+
+	return &lane, nil
+}
+
+
+func GetAvailableLanesRepository(
+	ctx context.Context,
+	buildingID int64,
+) ([]AvailableLaneResponse, error) {
+
+	query := `
+		SELECT
+			abl.id,
+			abl.lane_name
+
+		FROM academy_building_lanes abl
+
+		WHERE
+			abl.academy_building_id = $1
+			AND abl.is_under_maintenance = FALSE
+			AND NOT EXISTS (
+				SELECT 1
+				FROM practice_sessions ps
+				WHERE
+					ps.academy_building_lane_id = abl.id
+					AND ps.status = 'active'
+			)
+
+		ORDER BY
+			abl.lane_name ASC
+	`
+
+	rows, err := db.DB.Query(
+		ctx,
+		query,
+		buildingID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	lanes := []AvailableLaneResponse{}
+
+	for rows.Next() {
+
+		var lane AvailableLaneResponse
+
+		err := rows.Scan(
+			&lane.ID,
+			&lane.LaneName,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		lanes = append(
+			lanes,
+			lane,
+		)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return lanes, nil
 }
