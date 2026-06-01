@@ -118,6 +118,31 @@ CREATE TABLE districts (
 CREATE INDEX idx_districts_state_id
 ON districts(state_id);
 
+
+--------------------------------------------------------------------------------------------------------------
+-- PINCODES
+--------------------------------------------------------------------------------------------------------------
+
+CREATE TABLE pincodes (
+    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+
+    code CHAR(6) UNIQUE NOT NULL
+        CHECK (code ~ '^[0-9]{6}$'),
+
+    district_id INTEGER NOT NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_pincodes_district_id
+        FOREIGN KEY (district_id)
+        REFERENCES districts(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE
+);
+
+CREATE INDEX idx_pincodes_district_id
+ON pincodes(district_id);
+
 --------------------------------------------------------------------------------------------------------------
 -- ACADEMIES
 --------------------------------------------------------------------------------------------------------------
@@ -128,7 +153,7 @@ CREATE TABLE academies (
     name CITEXT NOT NULL
         CHECK (length(trim(name)) > 0),
 
-    district_id INTEGER NOT NULL,
+    pincode_id INTEGER NOT NULL,
 
     address TEXT NOT NULL
         CHECK (length(trim(address)) > 0),
@@ -139,21 +164,19 @@ CREATE TABLE academies (
 
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT fk_academies_district_id
-        FOREIGN KEY (district_id)
-        REFERENCES districts(id)
+    CONSTRAINT fk_academies_pincode_id
+        FOREIGN KEY (pincode_id)
+        REFERENCES pincodes(id)
         ON DELETE RESTRICT
         ON UPDATE CASCADE
 );
-
-
 
 --------------------------------------------------------------------------------------------------------------
 -- ACADEMIES INDEXES
 --------------------------------------------------------------------------------------------------------------
 
-CREATE INDEX idx_academies_district_id
-ON academies(district_id);
+CREATE INDEX idx_academies_pincode_id
+ON academies(pincode_id);
 
 --------------------------------------------------------------------------------------------------------------
 -- ACADEMIES UPDATED_AT TRIGGER
@@ -287,29 +310,6 @@ EXECUTE FUNCTION update_updated_at_column();
 
 
 
---------------------------------------------------------------------------------------------------------------
--- PINCODES
---------------------------------------------------------------------------------------------------------------
-
-CREATE TABLE pincodes (
-    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-
-    code CHAR(6) UNIQUE NOT NULL
-        CHECK (code ~ '^[0-9]{6}$'),
-
-    district_id INTEGER NOT NULL,
-
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_pincodes_district_id
-        FOREIGN KEY (district_id)
-        REFERENCES districts(id)
-        ON DELETE RESTRICT
-        ON UPDATE CASCADE
-);
-
-CREATE INDEX idx_pincodes_district_id
-ON pincodes(district_id);
 
 
 --------------------------------------------------------------------------------------------------------------

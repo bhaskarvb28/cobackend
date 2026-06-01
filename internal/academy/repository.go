@@ -122,6 +122,7 @@ func CheckAcademyBelongsToDistrict(
 // GetAcademiesRepository queries the database for paginated academy records.
 // It uses multi-step SQL queries, first counting matching records to calculate total pagination metrics,
 // and then fetching matching rows using custom limits, offsets, sorting, and state/district joins.
+// GetAcademiesRepository queries the database for paginated academy records.
 func GetAcademiesRepository(
 	ctx context.Context,
 	query GetAcademiesQuery,
@@ -130,7 +131,6 @@ func GetAcademiesRepository(
 	// ----------------------------------------------------------
 	// Calculate Offset
 	// ----------------------------------------------------------
-	// Determines how many rows to skip based on page size (limit) and page number.
 
 	offset := 0
 
@@ -141,32 +141,56 @@ func GetAcademiesRepository(
 	// ----------------------------------------------------------
 	// Build Database Queries
 	// ----------------------------------------------------------
-	// baseQuery fetches detailed records with a JOIN on districts to get the state_id.
-	// countQuery executes a matching SELECT COUNT(*) to calculate pagination pages.
 
 	baseQuery := `
 	SELECT
 		a.id,
 		a.name,
+
 		d.state_id,
-		a.district_id,
+		s.name AS state_name,
+
+		d.id AS district_id,
+		d.name AS district_name,
+
+		p.id AS pincode_id,
+		p.code AS pincode,
+
 		a.address,
+		a.is_active,
 		a.created_at,
 		a.updated_at
+
 	FROM academies a
+
+	INNER JOIN pincodes p
+		ON a.pincode_id = p.id
+
 	INNER JOIN districts d
-		ON a.district_id = d.id
+		ON p.district_id = d.id
+
+	INNER JOIN states s
+		ON d.state_id = s.id
+
 	WHERE 1=1
 	`
 
 	countQuery := `
 	SELECT COUNT(*)
+
 	FROM academies a
+
+	INNER JOIN pincodes p
+		ON a.pincode_id = p.id
+
 	INNER JOIN districts d
-		ON a.district_id = d.id
+		ON p.district_id = d.id
+
+	INNER JOIN states s
+		ON d.state_id = s.id
+
 	WHERE 1=1
 	`
-
 	args := []interface{}{}
 	argPos := 1
 
@@ -213,7 +237,7 @@ func GetAcademiesRepository(
 	if query.DistrictID != 0 {
 
 		condition := `
-		AND a.district_id = $` + strconv.Itoa(argPos)
+		AND d.id = $` + strconv.Itoa(argPos)
 
 		baseQuery += condition
 		countQuery += condition
@@ -281,9 +305,18 @@ func GetAcademiesRepository(
 		err := rows.Scan(
 			&a.ID,
 			&a.Name,
+
 			&a.StateID,
+			&a.StateName,
+
 			&a.DistrictID,
+			&a.DistrictName,
+
+			&a.PincodeID,
+			&a.Pincode,
+
 			&a.Address,
+			&a.IsActive,
 			&a.CreatedAt,
 			&a.UpdatedAt,
 		)
