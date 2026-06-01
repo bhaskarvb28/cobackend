@@ -356,6 +356,249 @@ func GetAcademiesRepository(
 	}, nil
 }
 
+// GetDistrictAdminAcademiesRepository fetches
+// academies belonging to the authenticated
+// district admin.
+func GetDistrictAdminAcademiesRepository(
+	ctx context.Context,
+	userID string,
+	query GetAcademiesQuery,
+) (PaginatedAcademies, error) {
+
+	// ----------------------------------------------------------
+	// Calculate Offset
+	// ----------------------------------------------------------
+
+	offset := 0
+
+	if query.Limit > 0 {
+		offset = (query.Page - 1) * query.Limit
+	}
+
+	// ----------------------------------------------------------
+	// Build Base Queries
+	// ----------------------------------------------------------
+
+	baseQuery := `
+	SELECT
+		a.id,
+		a.name,
+
+		d.state_id,
+		s.name AS state_name,
+
+		d.id AS district_id,
+		d.name AS district_name,
+
+		p.id AS pincode_id,
+		p.code AS pincode,
+
+		a.address,
+		a.is_active,
+		a.created_at,
+		a.updated_at
+
+	FROM academies a
+
+	INNER JOIN pincodes p
+		ON a.pincode_id = p.id
+
+	INNER JOIN districts d
+		ON p.district_id = d.id
+
+	INNER JOIN states s
+		ON d.state_id = s.id
+
+	INNER JOIN district_admins da
+		ON da.district_id = p.district_id
+
+	WHERE da.user_id = $1
+	`
+
+	countQuery := `
+	SELECT COUNT(*)
+
+	FROM academies a
+
+	INNER JOIN pincodes p
+		ON a.pincode_id = p.id
+
+	INNER JOIN district_admins da
+		ON da.district_id = p.district_id
+
+	WHERE da.user_id = $1
+	`
+
+	args := []interface{}{
+		userID,
+	}
+
+	argPos := 2
+
+	// ----------------------------------------------------------
+	// Apply Search Filter
+	// ----------------------------------------------------------
+
+	if query.Search != "" {
+
+		searchCondition := `
+		AND (
+			a.name ILIKE $` + strconv.Itoa(argPos) + `
+			OR a.address ILIKE $` + strconv.Itoa(argPos) + `
+		)
+		`
+
+		baseQuery += searchCondition
+		countQuery += searchCondition
+
+		args = append(
+			args,
+			"%"+query.Search+"%",
+		)
+
+		argPos++
+	}
+
+	// ----------------------------------------------------------
+	// Query Total Count
+	// ----------------------------------------------------------
+
+	var total int
+
+	err := db.DB.QueryRow(
+		ctx,
+		countQuery,
+		args...,
+	).Scan(&total)
+
+	if err != nil {
+		return PaginatedAcademies{}, err
+	}
+
+	// ----------------------------------------------------------
+	// Apply Sorting
+	// ----------------------------------------------------------
+
+	sortColumn :=
+		AllowedAcademySortFields[
+			query.SortBy,
+		]
+
+	baseQuery += `
+	ORDER BY ` + sortColumn + ` ` + query.OrderBy
+
+	// ----------------------------------------------------------
+	// Apply Pagination
+	// ----------------------------------------------------------
+
+	if query.Limit > 0 {
+
+		baseQuery += `
+		LIMIT $` + strconv.Itoa(argPos) + `
+		OFFSET $` + strconv.Itoa(argPos+1)
+
+		args = append(
+			args,
+			query.Limit,
+			offset,
+		)
+	}
+
+	// ----------------------------------------------------------
+	// Execute Query
+	// ----------------------------------------------------------
+
+	rows, err := db.DB.Query(
+		ctx,
+		baseQuery,
+		args...,
+	)
+
+	if err != nil {
+		return PaginatedAcademies{}, err
+	}
+
+	defer rows.Close()
+
+	// ----------------------------------------------------------
+	// Scan Rows
+	// ----------------------------------------------------------
+
+	academies := []AcademyResponse{}
+
+	for rows.Next() {
+
+		var a AcademyResponse
+
+		err := rows.Scan(
+			&a.ID,
+			&a.Name,
+
+			&a.StateID,
+			&a.StateName,
+
+			&a.DistrictID,
+			&a.DistrictName,
+
+			&a.PincodeID,
+			&a.Pincode,
+
+			&a.Address,
+			&a.IsActive,
+
+			&a.CreatedAt,
+			&a.UpdatedAt,
+		)
+
+		if err != nil {
+			return PaginatedAcademies{}, err
+		}
+
+		academies = append(
+			academies,
+			a,
+		)
+	}
+
+	if err := rows.Err(); err != nil {
+		return PaginatedAcademies{}, err
+	}
+
+	// ----------------------------------------------------------
+	// Pagination Metadata
+	// ----------------------------------------------------------
+
+	totalPages := 1
+
+	if query.Limit > 0 {
+
+		totalPages = int(
+			math.Ceil(
+				float64(total) /
+					float64(query.Limit),
+			),
+		)
+	}
+
+	return PaginatedAcademies{
+		Items: academies,
+
+		Page: query.Page,
+
+		Limit: query.Limit,
+
+		Total: total,
+
+		TotalPages: totalPages,
+
+		HasNext:
+			query.Page < totalPages,
+
+		HasPrevious:
+			query.Page > 1,
+	}, nil
+}
+
 func CreateAcademyBuildingRepository(
 	ctx context.Context,
 	academyID string,
@@ -464,6 +707,8 @@ func AddAcademyBuildingDisciplineRepository(
 
 	return &response, nil
 }
+
+
 
 // ============================================================================
 // repository.go

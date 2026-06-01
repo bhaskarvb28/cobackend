@@ -8,6 +8,10 @@ import (
 
 func RegisterRoutes(r chi.Router) {
 
+	// ==================================================
+	// Academy Routes
+	// ==================================================
+
 	r.Route("/academies", func(r chi.Router) {
 
 		// --------------------------------------------------
@@ -26,8 +30,43 @@ func RegisterRoutes(r chi.Router) {
 				"district_admin",
 			))
 
-			r.Post("/", CreateAcademyHandler)
-			r.Get("/", GetAcademiesHandler)
+			// ==============================================
+			// Create Academy
+			// ==============================================
+
+			r.Post(
+				"/",
+				CreateAcademyHandler,
+			)
+
+			// ==============================================
+			// Get ONLY District Admin Academies
+			// ==============================================
+
+			r.Get(
+				"/my-district",
+				GetDistrictAdminAcademiesHandler,
+			)
+		})
+
+		// --------------------------------------------------
+		// Super Admin Routes
+		// --------------------------------------------------
+
+		r.Group(func(r chi.Router) {
+
+			r.Use(middleware.RequireRole(
+				"super_admin",
+			))
+
+			// ==============================================
+			// Get All Academies
+			// ==============================================
+
+			r.Get(
+				"/",
+				GetAcademiesHandler,
+			)
 		})
 
 		// --------------------------------------------------
@@ -46,8 +85,15 @@ func RegisterRoutes(r chi.Router) {
 					"academy_admin",
 				))
 
-				r.Post("/", CreateAcademyBuildingHandler)
-				r.Get("/", GetAcademyBuildingsHandler)
+				r.Post(
+					"/",
+					CreateAcademyBuildingHandler,
+				)
+
+				r.Get(
+					"/",
+					GetAcademyBuildingsHandler,
+				)
 
 				r.Post(
 					"/{buildingID}/disciplines",

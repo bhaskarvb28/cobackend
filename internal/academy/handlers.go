@@ -471,6 +471,221 @@ func AddAcademyBuildingDisciplineHandler(
 	)
 }
 
+
+// GetDistrictAdminAcademiesHandler fetches
+// academies belonging to the authenticated
+// district admin.
+func GetDistrictAdminAcademiesHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	// ----------------------------------------------------------
+	// Get User ID From Context
+	// ----------------------------------------------------------
+
+	userID, ok := r.Context().Value(
+		middleware.UserIDKey,
+	).(string)
+
+	if !ok || userID == "" {
+
+		utils.WriteJSON(
+			w,
+			http.StatusUnauthorized,
+			shared.APIResponse{
+				Success: false,
+				Message: "unauthorized",
+			},
+		)
+
+		return
+	}
+
+	// ----------------------------------------------------------
+	// Parse Query Params
+	// ----------------------------------------------------------
+
+	pageStr := r.URL.Query().Get("page")
+
+	limitStr := r.URL.Query().Get("limit")
+
+	search := strings.TrimSpace(
+		r.URL.Query().Get("search"),
+	)
+
+	sortBy := r.URL.Query().Get("sort_by")
+
+	orderBy := r.URL.Query().Get("order_by")
+
+	// ----------------------------------------------------------
+	// Validate Page
+	// ----------------------------------------------------------
+
+	page := 1
+
+	if pageStr != "" {
+
+		parsed, err :=
+			strconv.Atoi(pageStr)
+
+		if err != nil || parsed < 1 {
+
+			utils.WriteJSON(
+				w,
+				http.StatusBadRequest,
+				shared.APIResponse{
+					Success: false,
+					Message: "invalid page",
+				},
+			)
+
+			return
+		}
+
+		page = parsed
+	}
+
+	// ----------------------------------------------------------
+	// Validate Limit
+	// ----------------------------------------------------------
+
+	limit := 10
+
+	if limitStr != "" {
+
+		if limitStr == "all" {
+
+			limit = 0
+
+		} else {
+
+			parsed, err :=
+				strconv.Atoi(limitStr)
+
+			if err != nil || parsed < 1 {
+
+				utils.WriteJSON(
+					w,
+					http.StatusBadRequest,
+					shared.APIResponse{
+						Success: false,
+						Message: "invalid limit",
+					},
+				)
+
+				return
+			}
+
+			limit = parsed
+		}
+	}
+
+	// ----------------------------------------------------------
+	// Validate Sorting
+	// ----------------------------------------------------------
+
+	if sortBy == "" {
+		sortBy = "name"
+	}
+
+	if orderBy == "" {
+		orderBy = "asc"
+	}
+
+	_, exists :=
+		AllowedAcademySortFields[
+			sortBy,
+		]
+
+	if !exists {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "invalid sort_by field",
+			},
+		)
+
+		return
+	}
+
+	orderBy =
+		strings.ToUpper(orderBy)
+
+	if orderBy != "ASC" &&
+		orderBy != "DESC" {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "invalid order_by value",
+			},
+		)
+
+		return
+	}
+
+	// ----------------------------------------------------------
+	// Build Query
+	// ----------------------------------------------------------
+
+	query := GetAcademiesQuery{
+		Page: page,
+
+		Limit: limit,
+
+		Search: search,
+
+		SortBy: sortBy,
+
+		OrderBy: orderBy,
+	}
+
+	// ----------------------------------------------------------
+	// Execute Service
+	// ----------------------------------------------------------
+
+	result, err :=
+		GetDistrictAdminAcademiesService(
+			r.Context(),
+			userID,
+			query,
+		)
+
+	if err != nil {
+
+		utils.WriteJSON(
+			w,
+			http.StatusInternalServerError,
+			shared.APIResponse{
+				Success: false,
+				Message: "failed to fetch district academies",
+			},
+		)
+
+		return
+	}
+
+	// ----------------------------------------------------------
+	// Success Response
+	// ----------------------------------------------------------
+
+	utils.WriteJSON(
+		w,
+		http.StatusOK,
+		shared.APIResponse{
+			Success: true,
+			Message: "district academies fetched successfully",
+			Data: result,
+		},
+	)
+}
+
 // ============================================================================
 // handler.go
 // ============================================================================

@@ -81,6 +81,28 @@ func GetAcademiesService(
 	)
 }
 
+// GetDistrictAdminAcademiesService retrieves
+// academies belonging to the authenticated
+// district admin.
+func GetDistrictAdminAcademiesService(
+	ctx context.Context,
+	userID string,
+	query GetAcademiesQuery,
+) (PaginatedAcademies, error) {
+
+	// ----------------------------------------------------------
+	// Fetch District Academies
+	// ----------------------------------------------------------
+
+	return GetDistrictAdminAcademiesRepository(
+		ctx,
+		userID,
+		query,
+	)
+}
+
+
+
 func CreateAcademyBuildingService(
 	ctx context.Context,
 	userID string,
