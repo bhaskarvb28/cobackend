@@ -15,16 +15,53 @@ func CreateAcademyRepository(
 	ctx context.Context,
 	districtID int,
 	input CreateAcademyInput,
-) (*AcademyResponse, error) {
+) (error) {
 
-	var academy AcademyResponse
+	// ----------------------------------------------------------
+	// Find District Pincode
+	// ----------------------------------------------------------
+
+	var pincodeID int
+
+	var pincode string
 
 	err := db.DB.QueryRow(
 		ctx,
 		`
+		SELECT
+			id,
+			code
+
+		FROM pincodes
+
+		WHERE district_id = $1
+
+		ORDER BY id ASC
+
+		LIMIT 1
+		`,
+		districtID,
+	).Scan(
+		&pincodeID,
+		&pincode,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	// ----------------------------------------------------------
+	// Create Academy
+	// ----------------------------------------------------------
+
+	var academy AcademyResponse
+
+	err = db.DB.QueryRow(
+		ctx,
+		`
 		INSERT INTO academies (
 			name,
-			district_id,
+			pincode_id,
 			address
 		)
 		VALUES (
@@ -32,22 +69,21 @@ func CreateAcademyRepository(
 			$2,
 			$3
 		)
+
 		RETURNING
 			id,
 			name,
-			district_id,
 			address,
 			is_active,
 			created_at,
 			updated_at
 		`,
 		input.Name,
-		districtID,
+		pincodeID,
 		input.Address,
 	).Scan(
 		&academy.ID,
 		&academy.Name,
-		&academy.DistrictID,
 		&academy.Address,
 		&academy.IsActive,
 		&academy.CreatedAt,
@@ -55,10 +91,20 @@ func CreateAcademyRepository(
 	)
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return &academy, nil
+	// ----------------------------------------------------------
+	// Populate Derived Fields
+	// ----------------------------------------------------------
+
+	academy.DistrictID = districtID
+
+	academy.PincodeID = pincodeID
+
+	academy.Pincode = pincode
+
+	return nil
 }
 
 

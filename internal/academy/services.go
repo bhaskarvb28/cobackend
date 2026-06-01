@@ -4,16 +4,16 @@ import (
 	"context"
 	"strings"
 
+	"cobackend/internal/academyAdmin"
 	"cobackend/internal/districtAdmin"
 	"cobackend/internal/shared"
-	"cobackend/internal/academyAdmin"
 )
 
 func CreateAcademyService(
 	ctx context.Context,
 	userID string,
 	input CreateAcademyInput,
-) (*AcademyResponse, error) {
+) (error) {
 
 	// ----------------------------------------------------------
 	// Normalize Input
@@ -27,11 +27,11 @@ func CreateAcademyService(
 	// ----------------------------------------------------------
 
 	if input.Name == "" {
-		return nil, shared.ErrAcademyNameRequired
+		return shared.ErrAcademyNameRequired
 	}
 
 	if input.Address == "" {
-		return nil, shared.ErrAddressRequired
+		return shared.ErrAddressRequired
 	}
 
 	// ----------------------------------------------------------
@@ -44,24 +44,24 @@ func CreateAcademyService(
 	)
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// ----------------------------------------------------------
 	// Create Academy
 	// ----------------------------------------------------------
 
-	academy, err := CreateAcademyRepository(
+	err = CreateAcademyRepository(
 		ctx,
 		districtAdminRegion.DistrictID,
 		input,
 	)
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return academy, nil
+	return nil
 }
 
 // GetAcademiesService retrieves a paginated list of academies

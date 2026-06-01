@@ -1,18 +1,18 @@
 package academy
 
 import (
-	"net/http"
 	"encoding/json"
+	"net/http"
 
-	"cobackend/internal/utils"
-	"cobackend/internal/shared"
 	"cobackend/internal/middleware"
+	"cobackend/internal/shared"
+	"cobackend/internal/utils"
 
 	"github.com/go-chi/chi/v5"
 
-	"strings"
-	"strconv"
 	"fmt"
+	"strconv"
+	"strings"
 )
 
 func CreateAcademyHandler(
@@ -45,7 +45,7 @@ func CreateAcademyHandler(
 
 	authUserID := r.Context().Value(middleware.UserIDKey).(string)
 
-	academy, err := CreateAcademyService(
+	err = CreateAcademyService(
 		r.Context(),
 		authUserID,
 		input,
@@ -71,7 +71,6 @@ func CreateAcademyHandler(
 		shared.APIResponse{
 			Success: true,
 			Message: "academy created successfully",
-			Data:    academy,
 		},
 	)
 }
