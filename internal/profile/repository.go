@@ -3,6 +3,7 @@ package profile
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 
 	"cobackend/internal/db"
@@ -10,6 +11,104 @@ import (
 
 	"github.com/jackc/pgx/v5"
 )
+
+func GetProfileCompletedStatus(
+	ctx context.Context,
+	userID string,
+	roleName string,
+) (bool, error) {
+
+	var query string
+
+	switch roleName {
+
+	case "super_admin":
+		return true, nil
+
+	case "state_admin":
+
+		query = `
+			SELECT profile_completed
+			FROM state_admins
+			WHERE user_id = $1
+		`
+
+	case "district_admin":
+
+		query = `
+			SELECT profile_completed
+			FROM district_admins
+			WHERE user_id = $1
+		`
+
+	case "district_coach":
+
+		query = `
+			SELECT profile_completed
+			FROM district_coaches
+			WHERE user_id = $1
+		`
+
+	case "academy_admin":
+
+		query = `
+			SELECT profile_completed
+			FROM academy_admins
+			WHERE user_id = $1
+		`
+
+	case "academy_coach":
+
+		query = `
+			SELECT profile_completed
+			FROM academy_coaches
+			WHERE user_id = $1
+		`
+
+	case "player":
+
+		query = `
+			SELECT profile_completed
+			FROM players
+			WHERE user_id = $1
+		`
+
+	default:
+		return false, shared.ErrInvalidRole
+	}
+
+	var profileCompleted bool
+
+	err := db.DB.QueryRow(
+		ctx,
+		query,
+		userID,
+	).Scan(&profileCompleted)
+
+	if err != nil {
+
+		if errors.Is(
+			err,
+			pgx.ErrNoRows,
+		) {
+
+			// --------------------------------------
+			// No profile yet means incomplete
+			// --------------------------------------
+
+			return false, nil
+		}
+
+		fmt.Println(
+			"GetProfileCompletedStatus:",
+			err,
+		)
+
+		return false, err
+	}
+
+	return profileCompleted, nil
+}
 
 // func CheckEmailExists(
 // 	ctx context.Context,
@@ -125,7 +224,8 @@ import (
 // }
 
 
-
+// Get Profile
+// State Admin
 func GetStateAdminProfileByUserID(
 	ctx context.Context,
 	userID string,
@@ -175,6 +275,7 @@ func GetStateAdminProfileByUserID(
 	return profile, nil
 }
 
+// District Admin
 func GetDistrictAdminProfileByUserID(
 	ctx context.Context,
 	userID string,
@@ -235,6 +336,7 @@ func GetDistrictAdminProfileByUserID(
 	return profile, nil
 }
 
+// District Coach
 func GetDistrictCoachProfileByUserID(
 	ctx context.Context,
 	userID string,
@@ -314,6 +416,7 @@ func GetDistrictCoachProfileByUserID(
 	return profile, nil
 }
 
+// District Coach Disciplines
 func GetDistrictCoachDisciplinesByUserID(
 	ctx context.Context,
 	userID string,
@@ -372,6 +475,7 @@ func GetDistrictCoachDisciplinesByUserID(
 	return disciplines, nil
 }
 
+// Academy Admin
 func GetAcademyAdminProfileByUserID(
 	ctx context.Context,
 	userID string,
@@ -447,6 +551,7 @@ func GetAcademyAdminProfileByUserID(
 	return profile, nil
 }
 
+// Academy Coach 
 func GetAcademyCoachProfileByUserID(
 	ctx context.Context,
 	userID string,
@@ -537,6 +642,7 @@ func GetAcademyCoachProfileByUserID(
 	return profile, nil
 }
 
+// Academy Coach Disciplines
 func GetAcademyCoachDisciplinesByUserID(
 	ctx context.Context,
 	userID string,
@@ -595,6 +701,7 @@ func GetAcademyCoachDisciplinesByUserID(
 	return disciplines, nil
 }
 
+// Player
 func GetPlayerProfileByUserID(
 	ctx context.Context,
 	userID string,
@@ -1064,6 +1171,9 @@ func GetPlayerGuardiansByUserID(
 	return guardians, nil
 }
 
+
+
+// Complete Profile
 
 func CompleteStateAdminProfile(
 	ctx context.Context,

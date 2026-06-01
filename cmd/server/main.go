@@ -3,6 +3,7 @@ package main
 import (
 	"cobackend/internal/academy"
 	"cobackend/internal/disciplines"
+	"cobackend/internal/role"
 	session "cobackend/internal/sessions"
 
 	// "cobackend/internal/academyAdmin"
@@ -26,6 +27,7 @@ import (
 	"os"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/cors"
 	"github.com/joho/godotenv"
 )
 
@@ -45,8 +47,40 @@ func main() {
 
 	r := chi.NewRouter()
 
+	r.Use(cors.Handler(cors.Options{
+		AllowedOrigins: []string{
+			"http://localhost:5173",
+			"https://yourfrontend.onrender.com",
+		},
+
+		AllowedMethods: []string{
+			"GET",
+			"POST",
+			"PUT",
+			"PATCH",
+			"DELETE",
+			"OPTIONS",
+		},
+
+		AllowedHeaders: []string{
+			"Accept",
+			"Authorization",
+			"Content-Type",
+			"X-CSRF-Token",
+		},
+
+		ExposedHeaders: []string{
+			"Link",
+		},
+
+		AllowCredentials: true,
+
+		MaxAge: 300,
+	}))
+
 	r.Route("/api/v1", func(r chi.Router) {
 		auth.RegisterRoutes(r)
+		role.RegisterRoutes(r)
 		state.RegisterRoutes(r)
 		district.RegisterRoutes(r)
 		invitation.RegisterRoutes(r)
@@ -57,6 +91,7 @@ func main() {
 
 		player.RegisterRoutes(r)
 		session.RegisterRoutes(r)
+
 
 		// stateAdmin.RegisterRoutes(r)
 		// districtAdmin.RegisterRoutes(r)

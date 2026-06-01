@@ -90,6 +90,8 @@ func LoginService(
 	return response, nil
 }
 
+// ----------------------------------------------------------------------------------------------------------
+
 // func AcceptInvitationService(
 // 	ctx context.Context,
 // 	input AcceptInvitationInput,

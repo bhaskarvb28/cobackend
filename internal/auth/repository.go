@@ -59,6 +59,8 @@ func GetUserByEmail(
 	return user, nil
 }
 
+// ----------------------------------------------------------------------------------------------------------
+
 func GetUserRoleCodeByID(
 	ctx context.Context,
 	userID string,

@@ -11,342 +11,48 @@ import (
 	"strings"
 	"time"
 
+	// "crypto/rand"
+	// "crypto/sha256"
+	// "encoding/hex"
+	// "fmt"
+	// "os"
+	// "strconv"
+	// "strings"
+	// "time"
+
+	// "cobackend/internal/academy"
+	// "cobackend/internal/auth"
+	// "cobackend/internal/db"
+	// "cobackend/internal/districtAdmin"
+	// "cobackend/internal/districtCoach"
+	// "cobackend/internal/district"
+	// "cobackend/internal/jwtToken"
+	// "cobackend/internal/mail"
 	"cobackend/internal/academy"
-	"cobackend/internal/auth"
-	"cobackend/internal/db"
-	"cobackend/internal/districtAdmin"
-	"cobackend/internal/districtCoach"
-	"cobackend/internal/district"
-	"cobackend/internal/jwtToken"
-	"cobackend/internal/mail"
-	"cobackend/internal/role"
-	"cobackend/internal/shared"
-	"cobackend/internal/stateAdmin"
-	"cobackend/internal/state"
-	"cobackend/internal/utils"
-	"cobackend/internal/validation"
 	"cobackend/internal/academyAdmin"
 	"cobackend/internal/academyCoach"
+	"cobackend/internal/auth"
+	"cobackend/internal/db"
+	"cobackend/internal/district"
+	"cobackend/internal/districtAdmin"
+	"cobackend/internal/districtCoach"
+	"cobackend/internal/jwtToken"
+	"cobackend/internal/mail"
 	"cobackend/internal/player"
+	"cobackend/internal/role"
+	"cobackend/internal/shared"
+	"cobackend/internal/state"
+	"cobackend/internal/stateAdmin"
+	"cobackend/internal/utils"
+	"cobackend/internal/validation"
+	// "cobackend/internal/stateAdmin"
+	// "cobackend/internal/state"
+	// "cobackend/internal/utils"
+	// "cobackend/internal/validation"
+	// "cobackend/internal/academyAdmin"
+	// "cobackend/internal/academyCoach"
+	// "cobackend/internal/player"
 )
-
-// CreateInvitationService creates a new invitation
-// based on the provided input.
-func CreateInvitationService(
-	ctx context.Context,
-	input CreateInvitationInput,
-	authUserID string,
-) (*InvitationResponse, error) {
-
-	//------------------------------------------------
-	// Normalize Input
-	//------------------------------------------------
-
-	email := strings.ToLower(
-		strings.TrimSpace(input.Email),
-	)
-
-	roleCode := strings.TrimSpace(
-		input.Role,
-	)
-
-	scopeType := strings.TrimSpace(
-		input.ScopeType,
-	)
-
-	scopeID := strings.TrimSpace(
-		input.ScopeID,
-	)
-
-	//------------------------------------------------
-	// Get Inviter Role
-	//------------------------------------------------
-
-	inviterRole, err := auth.GetUserRoleCodeByID(
-		ctx,
-		authUserID,
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	//------------------------------------------------
-	// Invitation Permissions
-	//------------------------------------------------
-
-	targetRoles, exists := InvitationPermissions[inviterRole]
-
-	if !exists {
-		return nil, shared.ErrForbidden
-	}
-
-	canInvite := false
-
-	for _, allowedRole := range targetRoles {
-
-		if allowedRole == roleCode {
-			canInvite = true
-			break
-		}
-	}
-
-	if !canInvite {
-		return nil, shared.ErrRoleNotAuthorized
-	}
-
-	//------------------------------------------------
-	// Scope Validation
-	//------------------------------------------------
-
-	switch roleCode {
-
-		//------------------------------------------------
-		// State Admin
-		//------------------------------------------------
-
-		case "state_admin":
-
-			if scopeType != "state" {
-				return nil, shared.ErrInvalidScope
-			}
-
-			stateID, err := strconv.Atoi(scopeID)
-
-			if err != nil {
-				return nil, shared.ErrInvalidScope
-			}
-
-			exists, err := state.CheckStateExists(
-				ctx,
-				stateID,
-			)
-
-			if err != nil {
-				return nil, err
-			}
-
-			if !exists {
-				return nil, shared.ErrStateNotFound
-			}
-
-		//------------------------------------------------
-		// District Roles
-		//------------------------------------------------
-
-		case "district_admin", "district_coach":
-
-			if scopeType != "district" {
-				return nil, shared.ErrInvalidScope
-			}
-
-			districtID, err := strconv.Atoi(scopeID)
-
-			if err != nil {
-				return nil, shared.ErrInvalidScope
-			}
-
-			exists, err := district.CheckDistrictExists(
-				ctx,
-				districtID,
-			)
-
-			if err != nil {
-				return nil, err
-			}
-
-			if !exists {
-				return nil, shared.ErrDistrictNotFound
-			}
-
-		//------------------------------------------------
-		// Academy Roles
-		//------------------------------------------------
-
-		case "academy_admin", "academy_coach", "player":
-
-			if scopeType != "academy" {
-				return nil, shared.ErrInvalidScope
-			}
-
-			if !validation.IsValidUUID(scopeID) {
-				return nil, shared.ErrInvalidScope
-			}
-
-			exists, err := academy.CheckAcademyExists(
-				ctx,
-				scopeID,
-			)
-
-			if err != nil {
-				return nil, err
-			}
-
-			if !exists {
-				return nil, shared.ErrAcademyNotFound
-			}
-	}
-
-	//------------------------------------------------
-	// Existing User Validation
-	//------------------------------------------------
-
-	emailExists, err := auth.CheckUserExistsByEmail(
-		ctx,
-		email,
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if emailExists {
-		return nil, shared.ErrEmailAlreadyExists
-	}
-
-	//------------------------------------------------
-	// Pending Invitation Validation
-	//------------------------------------------------
-
-	pendingExists, err := ExistsPendingInvitationByEmail(
-		ctx,
-		email,
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if pendingExists {
-		return nil, shared.ErrInvitationAlreadyExists
-	}
-
-	//------------------------------------------------
-	// Resolve Role ID
-	//------------------------------------------------
-
-	roleID, err := role.GetRoleIDByCode(
-		ctx,
-		roleCode,
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	//------------------------------------------------
-	// Generate Token
-	//------------------------------------------------
-
-	tokenBytes := make([]byte, 32)
-
-	_, err = rand.Read(
-		tokenBytes,
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	rawToken := hex.EncodeToString(
-		tokenBytes,
-	)
-
-	fmt.Print("\n")
-	fmt.Print(rawToken)
-	fmt.Print("\n")
-
-	//------------------------------------------------
-	// Hash Token
-	//------------------------------------------------
-
-	hash := sha256.Sum256(
-		[]byte(rawToken),
-	)
-
-	tokenHash := hex.EncodeToString(
-		hash[:],
-	)
-
-	//------------------------------------------------
-	// Expiry
-	//------------------------------------------------
-
-	expiresAt := time.Now().
-		Add(24 * time.Hour)
-
-	//------------------------------------------------
-	// Create Invitation
-	//------------------------------------------------
-
-	invitationID, err := CreateInvitationRepository(
-		ctx,
-		email,
-		roleID,
-		authUserID,
-		tokenHash,
-		scopeType,
-		scopeID,
-		expiresAt,
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	//------------------------------------------------
-	// Invitation Link
-	//------------------------------------------------
-
-	frontendURL := os.Getenv(
-		"FRONTEND_URL",
-	)
-
-	inviteLink := fmt.Sprintf(
-		"%s/accept-invitation?token=%s",
-		frontendURL,
-		rawToken,
-	)
-
-	//------------------------------------------------
-	// Send Email
-	//------------------------------------------------
-
-	err = mail.SendInvitationEmail(
-		email,
-		inviteLink,
-		roleCode,
-	)
-
-	if err != nil {
-
-		deleteErr := DeleteInvitationByID(
-			ctx,
-			invitationID,
-		)
-
-		if deleteErr != nil {
-			return nil, deleteErr
-		}
-
-		return nil, err
-	}
-
-	//------------------------------------------------
-	// Response
-	//------------------------------------------------
-
-	return &InvitationResponse{
-		ID:        invitationID,
-		Email:     email,
-		Role:      roleCode,
-		ScopeType: &scopeType,
-		ScopeID:   &scopeID,
-		Status:    "pending",
-		ExpiresAt: expiresAt,
-		CreatedAt: time.Now(),
-	}, nil
-}
 
 // GetInvitationsService fetches all invitations
 // visible to the authenticated user.
@@ -367,6 +73,9 @@ func GetInvitationsService(
 	if !ok {
 		return nil, shared.ErrForbidden
 	}
+
+	isSuperAdmin := role == "super_admin"
+
 
 	// ----------------------------------------------------------
 	// Validate Sorting
@@ -397,6 +106,7 @@ func GetInvitationsService(
 		ctx,
 		userID,
 		roles,
+		isSuperAdmin,
 		query,
 	)
 
@@ -407,52 +117,321 @@ func GetInvitationsService(
 	return invitations, nil
 }
 
-// GetInvitationByIDService fetches invitation details
-// for the provided invitation ID.
-// GetInvitationByIDService fetches invitation details
-// for the provided invitation ID.
-func GetInvitationByIDService(
+
+// CreateInvitationService creates a new invitation
+// based on the provided input.
+func CreateInvitationService(
 	ctx context.Context,
-	invitationID int64,
-	userID string,
-	role string,
-) (*InvitationResponse, error) {
+	input CreateInvitationInput,
+	authUserID string,
+) error {
 
-	// ----------------------------------------------------------
-	// Invitation Permissions
-	// ----------------------------------------------------------
+	//------------------------------------------------
+	// Normalize Input
+	//------------------------------------------------
 
+	name := strings.TrimSpace(
+		input.Name,
+	)
 
-	roles, ok := InvitationPermissions[role]
+	email := strings.ToLower(
+		strings.TrimSpace(input.Email),
+	)
 
-	if !ok {
-		return nil, shared.ErrForbidden
-	}
+	roleCode := strings.TrimSpace(
+		input.Role,
+	)
 
-	// ----------------------------------------------------------
-	// Fetch Invitation
-	// ----------------------------------------------------------
+	scopeType := strings.TrimSpace(
+		input.ScopeType,
+	)
 
-	invitation, err := GetInvitationByIDRepository(
+	scopeID := strings.TrimSpace(
+		input.ScopeID,
+	)
+
+	//------------------------------------------------
+	// Get Inviter Role
+	//------------------------------------------------
+
+	inviterRole, err := auth.GetUserRoleCodeByID(
 		ctx,
-		invitationID,
-		userID,
-		roles,
+		authUserID,
 	)
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	if invitation == nil {
-		return nil, shared.ErrInvitationNotFound
+	//------------------------------------------------
+	// Invitation Permissions
+	//------------------------------------------------
+
+	targetRoles, exists := InvitationPermissions[inviterRole]
+
+	if !exists {
+		return shared.ErrForbidden
 	}
 
-	return invitation, nil
+	canInvite := false
+
+	for _, allowedRole := range targetRoles {
+
+		if allowedRole == roleCode {
+			canInvite = true
+			break
+		}
+	}
+
+	if !canInvite {
+		return shared.ErrRoleNotAuthorized
+	}
+
+	//------------------------------------------------
+	// Scope Validation
+	//------------------------------------------------
+
+	switch roleCode {
+
+		//------------------------------------------------
+		// State Admin
+		//------------------------------------------------
+
+	case "state_admin":
+
+		if scopeType != "state" {
+			return shared.ErrInvalidScope
+		}
+
+		stateID, err := strconv.Atoi(scopeID)
+
+		if err != nil {
+			return shared.ErrInvalidScope
+		}
+
+		exists, err := state.CheckStateExists(
+			ctx,
+			stateID,
+		)
+
+		if err != nil {
+			return err
+		}
+
+		if !exists {
+			return shared.ErrStateNotFound
+		}
+
+	//------------------------------------------------
+	// District Roles
+	//------------------------------------------------
+
+	case "district_admin", "district_coach":
+
+		if scopeType != "district" {
+			return shared.ErrInvalidScope
+		}
+
+		districtID, err := strconv.Atoi(scopeID)
+
+		if err != nil {
+			return shared.ErrInvalidScope
+		}
+
+		exists, err := district.CheckDistrictExists(
+			ctx,
+			districtID,
+		)
+
+		if err != nil {
+			return err
+		}
+
+		if !exists {
+			return shared.ErrDistrictNotFound
+		}
+
+	//------------------------------------------------
+	// Academy Roles
+	//------------------------------------------------
+
+	case "academy_admin", "academy_coach", "player":
+
+		if scopeType != "academy" {
+			return shared.ErrInvalidScope
+		}
+
+		if !validation.IsValidUUID(scopeID) {
+			return shared.ErrInvalidScope
+		}
+
+		exists, err := academy.CheckAcademyExists(
+			ctx,
+			scopeID,
+		)
+
+		if err != nil {
+			return err
+		}
+
+		if !exists {
+			return shared.ErrAcademyNotFound
+		}
+	}
+
+	//------------------------------------------------
+	// Existing User Validation
+	//------------------------------------------------
+
+	emailExists, err := auth.CheckUserExistsByEmail(
+		ctx,
+		email,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	if emailExists {
+		return shared.ErrEmailAlreadyExists
+	}
+
+	//------------------------------------------------
+	// Pending Invitation Validation
+	//------------------------------------------------
+
+	pendingExists, err := ExistsPendingInvitationByEmail(
+		ctx,
+		email,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	if pendingExists {
+		return shared.ErrInvitationAlreadyExists
+	}
+
+	//------------------------------------------------
+	// Resolve Role ID
+	//------------------------------------------------
+
+	roleID, err := role.GetRoleIDByCode(
+		ctx,
+		roleCode,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	//------------------------------------------------
+	// Generate Token
+	//------------------------------------------------
+
+	tokenBytes := make([]byte, 32)
+
+	_, err = rand.Read(
+		tokenBytes,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	rawToken := hex.EncodeToString(
+		tokenBytes,
+	)
+
+	//------------------------------------------------
+	// Hash Token
+	//------------------------------------------------
+
+	hash := sha256.Sum256(
+		[]byte(rawToken),
+	)
+
+	tokenHash := hex.EncodeToString(
+		hash[:],
+	)
+
+	//------------------------------------------------
+	// Expiry
+	//------------------------------------------------
+
+	expiresAt := time.Now().
+		Add(24 * time.Hour)
+
+	//------------------------------------------------
+	// Create Invitation
+	//------------------------------------------------
+
+	invitationID, err := CreateInvitationRepository(
+		ctx,
+		name,
+		email,
+		roleID,
+		authUserID,
+		tokenHash,
+		scopeType,
+		scopeID,
+		expiresAt,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	//------------------------------------------------
+	// Invitation Link
+	//------------------------------------------------
+
+	frontendURL := os.Getenv(
+		"FRONTEND_URL",
+	)
+
+	inviteLink := fmt.Sprintf(
+		"%s/accept-invitation?token=%s",
+		frontendURL,
+		rawToken,
+	)
+
+	//------------------------------------------------
+	// Send Email
+	//------------------------------------------------
+
+	err = mail.SendInvitationEmail(
+		email,
+		name,
+		inviteLink,
+		roleCode,
+	)
+
+	if err != nil {
+
+		deleteErr := DeleteInvitationByID(
+			ctx,
+			invitationID,
+		)
+
+		if deleteErr != nil {
+			return deleteErr
+		}
+
+		return err
+	}
+
+	// Remove in production
+	fmt.Print("\n")
+	fmt.Print(rawToken)
+	fmt.Print("\n")
+
+	return nil
 }
 
-// RevokeInvitationService revokes an existing invitation.
-func RevokeInvitationService(
+// DeleteInvitationService deletes an invitation.
+func DeleteInvitationService(
 	ctx context.Context,
 	invitationID int64,
 	userID string,
@@ -489,23 +468,10 @@ func RevokeInvitationService(
 	}
 
 	// ----------------------------------------------------------
-	// Validate Invitation Status
+	// Delete Invitation
 	// ----------------------------------------------------------
 
-	switch invitation.Status {
-
-	case "accepted":
-		return shared.ErrInvitationAlreadyAccepted
-
-	case "revoked":
-		return shared.ErrInvitationAlreadyRevoked
-	}
-
-	// ----------------------------------------------------------
-	// Revoke Invitation
-	// ----------------------------------------------------------
-
-	err = RevokeInvitationRepository(
+	err = DeleteInvitationByID(
 		ctx,
 		invitationID,
 	)
@@ -516,6 +482,124 @@ func RevokeInvitationService(
 
 	return nil
 }
+
+
+
+// GetInvitationByTokenService fetches an invitation
+// using a public invitation token.
+func GetInvitationByTokenService(
+	ctx context.Context,
+	token string,
+) (*InvitationResponse, error) {
+
+	// ----------------------------------------------------------
+	// Hash Token
+	// ----------------------------------------------------------
+
+	hashedToken := utils.HashSHA256(token)
+
+	// ----------------------------------------------------------
+	// Get Invitation
+	// ----------------------------------------------------------
+
+	invitation, err := GetInvitationByTokenRepository(
+		ctx,
+		hashedToken,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if invitation == nil {
+		return nil, shared.ErrInvitationNotFound
+	}
+
+	// ----------------------------------------------------------
+	// Validate Status
+	// ----------------------------------------------------------
+
+	switch invitation.Status {
+
+	case "revoked":
+		return nil, shared.ErrInvitationRevoked
+
+	case "accepted":
+		return nil, shared.ErrInvitationAlreadyAccepted
+	}
+
+	// ----------------------------------------------------------
+	// Check Expiration
+	// ----------------------------------------------------------
+
+	if time.Now().After(invitation.ExpiresAt) {
+
+		return nil, shared.ErrInvitationExpired
+	}
+
+	return invitation, nil
+}
+
+
+
+
+//------------------------------------------------------------------------------------------------
+//BORDER
+//------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+// GetInvitationByIDService fetches invitation details
+// for the provided invitation ID.
+// GetInvitationByIDService fetches invitation details
+// for the provided invitation ID.
+// func GetInvitationByIDService(
+// 	ctx context.Context,
+// 	invitationID int64,
+// 	userID string,
+// 	role string,
+// ) (*InvitationResponse, error) {
+
+// 	// ----------------------------------------------------------
+// 	// Invitation Permissions
+// 	// ----------------------------------------------------------
+
+
+// 	roles, ok := InvitationPermissions[role]
+
+// 	if !ok {
+// 		return nil, shared.ErrForbidden
+// 	}
+
+// 	// ----------------------------------------------------------
+// 	// Fetch Invitation
+// 	// ----------------------------------------------------------
+
+// 	invitation, err := GetInvitationByIDRepository(
+// 		ctx,
+// 		invitationID,
+// 		userID,
+// 		roles,
+// 	)
+
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	if invitation == nil {
+// 		return nil, shared.ErrInvitationNotFound
+// 	}
+
+// 	return invitation, nil
+// }
+
+
+
+
 
 func AcceptInvitationService(
 	ctx context.Context,
@@ -644,7 +728,7 @@ func AcceptInvitationService(
 			Email:         invitation.Email,
 			PasswordHash:  passwordHash,
 			ContactNumber: input.ContactNumber,
-			Role:          invitation.Role,
+			Role:          invitation.Role.Key,
 		},
 	)
 
@@ -664,11 +748,9 @@ func AcceptInvitationService(
 	// Create Role Extension
 	// ----------------------------------------------------------
 
-	switch invitation.Role {
+	switch invitation.Role.Key {
 
 	case "state_admin":
-
-		fmt.Println("[Role] state_admin")
 
 		if *invitation.ScopeType != "state" {
 			return nil, shared.ErrInvalidInvitationScope
@@ -1006,57 +1088,3 @@ func AcceptInvitationService(
 	return response, nil
 }
 
-// GetInvitationByTokenService fetches an invitation
-// using a public invitation token.
-func GetInvitationByTokenService(
-	ctx context.Context,
-	token string,
-) (*InvitationResponse, error) {
-
-	// ----------------------------------------------------------
-	// Hash Token
-	// ----------------------------------------------------------
-
-	hashedToken := utils.HashSHA256(token)
-
-	// ----------------------------------------------------------
-	// Get Invitation
-	// ----------------------------------------------------------
-
-	invitation, err := GetInvitationByTokenRepository(
-		ctx,
-		hashedToken,
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	if invitation == nil {
-		return nil, shared.ErrInvitationNotFound
-	}
-
-	// ----------------------------------------------------------
-	// Validate Status
-	// ----------------------------------------------------------
-
-	switch invitation.Status {
-
-	case "revoked":
-		return nil, shared.ErrInvitationRevoked
-
-	case "accepted":
-		return nil, shared.ErrInvitationAlreadyAccepted
-	}
-
-	// ----------------------------------------------------------
-	// Check Expiration
-	// ----------------------------------------------------------
-
-	if time.Now().After(invitation.ExpiresAt) {
-
-		return nil, shared.ErrInvitationExpired
-	}
-
-	return invitation, nil
-}

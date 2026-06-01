@@ -4,57 +4,63 @@ import (
 	"context"
 	"errors"
 
-	"github.com/jackc/pgx/v5"
-
 	"cobackend/internal/db"
 	"cobackend/internal/shared"
+	"cobackend/internal/shared/models"
+
+	"github.com/jackc/pgx/v5"
 )
 
-func GetRoleIDByName(
+func GetRolesByCodesRepository(
 	ctx context.Context,
-	roleName string,
-) (string, error) {
+	roleCodes []string,
+) ([]models.Role, error) {
 
-	var roleID string
-
-	err := db.DB.QueryRow(
-		ctx,
-		`
-		SELECT id
+	query := `
+		SELECT
+			id,
+			code,
+			display_name
 		FROM roles
-		WHERE name = $1
-		`,
-		roleName,
-	).Scan(&roleID)
+		WHERE code = ANY($1)
+		ORDER BY id ASC
+	`
+
+	rows, err := db.DB.Query(
+		ctx,
+		query,
+		roleCodes,
+	)
 
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	return roleID, nil
-}
+	defer rows.Close()
 
-func GetRoleNameByID(
-	ctx context.Context,
-	roleID string,
-) (string, error) {
-	var roleName string
+	roles := []models.Role{}
 
-	err := db.DB.QueryRow(
-		ctx,
-		`
-		SELECT name
-		FROM roles
-		WHERE id = $1
-		`,
-		roleID,
-	).Scan(&roleName)
+	for rows.Next() {
 
-	if err != nil {
-		return "", err
+		var role models.Role
+
+		err := rows.Scan(
+			&role.ID,
+			&role.Code,
+			&role.DisplayName,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		roles = append(
+			roles,
+			role,
+		)
 	}
 
-	return roleName, nil
+	return roles, nil
 }
 
 func GetRoleIDByCode(
@@ -89,4 +95,102 @@ func GetRoleIDByCode(
 	}
 
 	return roleID, nil
+}
+
+// func GetRoleIDByName(
+// 	ctx context.Context,
+// 	roleName string,
+// ) (string, error) {
+
+// 	var roleID string
+
+// 	err := db.DB.QueryRow(
+// 		ctx,
+// 		`
+// 		SELECT id
+// 		FROM roles
+// 		WHERE name = $1
+// 		`,
+// 		roleName,
+// 	).Scan(&roleID)
+
+// 	if err != nil {
+// 		return "", err
+// 	}
+
+// 	return roleID, nil
+// }
+
+// func GetRoleNameByID(
+// 	ctx context.Context,
+// 	roleID string,
+// ) (string, error) {
+// 	var roleName string
+
+// 	err := db.DB.QueryRow(
+// 		ctx,
+// 		`
+// 		SELECT name
+// 		FROM roles
+// 		WHERE id = $1
+// 		`,
+// 		roleID,
+// 	).Scan(&roleName)
+
+// 	if err != nil {
+// 		return "", err
+// 	}
+
+// 	return roleName, nil
+// }
+
+
+
+func GetRolesRepository(
+	ctx context.Context,
+) ([]models.Role, error) {
+
+	query := `
+		SELECT
+			id,
+			code,
+			display_name
+		FROM roles
+		ORDER BY id ASC
+	`
+
+	rows, err := db.DB.Query(
+		ctx,
+		query,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	roles := []models.Role{}
+
+	for rows.Next() {
+
+		var role models.Role
+
+		err := rows.Scan(
+			&role.ID,
+			&role.Code,
+			&role.DisplayName,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		roles = append(
+			roles,
+			role,
+		)
+	}
+
+	return roles, nil
 }

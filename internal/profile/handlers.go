@@ -73,6 +73,8 @@ func GetProfileHandler(
 	)
 }
 
+// ----------------------------------------------------------------------------------------------------------
+
 func CompleteProfileHandler(
 	w http.ResponseWriter,
 	r *http.Request,

@@ -4,10 +4,10 @@ package state
 type State struct {
 
 	// ID is the unique identifier of the state.
-	ID string
+	ID int `json:"id"`
 
 	// Name is the display name of the state.
-	Name string
+	Name string `json:"name"`
 }
 
 // GetStatesQueryParams contains query parameters

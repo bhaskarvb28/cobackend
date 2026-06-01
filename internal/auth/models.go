@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"cobackend/internal/role"
+	"cobackend/internal/shared/models"
 )
 
 // LoginInput contains user credentials
@@ -20,7 +20,7 @@ type AuthUser struct {
 	Email         string
 	ContactNumber string
 	PasswordHash  string
-	Role          role.Role
+	Role          models.Role
 }
 
 // LoginResponse contains authentication tokens
@@ -38,8 +38,10 @@ type UserResponse struct {
 	LastName      *string    `json:"last_name,omitempty"`
 	Email         string     `json:"email"`
 	ContactNumber string     `json:"contact_number"`
-	Role          role.Role `json:"role"`
+	Role          models.Role `json:"role"`
 }
+
+// ----------------------------------------------------------------------------------------------------------
 
 type CreateUserInput struct {
 	FirstName     string

@@ -134,6 +134,8 @@ func GetProfileService(
 	return response, nil
 }
 
+// ----------------------------------------------------------------------------------------------------------
+
 func CompleteProfileService(
 	ctx context.Context,
 	userID string,

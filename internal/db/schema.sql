@@ -18,88 +18,6 @@ CREATE TABLE roles (
 );
 
 --------------------------------------------------------------------------------------------------------------
--- STATES
---------------------------------------------------------------------------------------------------------------
-
-CREATE TABLE states (
-    id SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-
-    name CITEXT UNIQUE NOT NULL
-        CHECK (length(trim(name)) > 0),
-
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
---------------------------------------------------------------------------------------------------------------
--- DISTRICTS
---------------------------------------------------------------------------------------------------------------
-
-CREATE TABLE districts (
-    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-
-    name CITEXT NOT NULL
-        CHECK (length(trim(name)) > 0),
-
-    state_id SMALLINT NOT NULL,
-
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_districts_state_id
-        FOREIGN KEY (state_id)
-        REFERENCES states(id)
-        ON DELETE RESTRICT
-        ON UPDATE CASCADE,
-
-    CONSTRAINT unique_district_per_state
-        UNIQUE(name, state_id)
-);
-
-CREATE INDEX idx_districts_state_id
-ON districts(state_id);
-
---------------------------------------------------------------------------------------------------------------
--- PINCODES
---------------------------------------------------------------------------------------------------------------
-
-CREATE TABLE pincodes (
-    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-
-    code CHAR(6) UNIQUE NOT NULL
-        CHECK (code ~ '^[0-9]{6}$'),
-
-    district_id INTEGER NOT NULL,
-
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT fk_pincodes_district_id
-        FOREIGN KEY (district_id)
-        REFERENCES districts(id)
-        ON DELETE RESTRICT
-        ON UPDATE CASCADE
-);
-
-CREATE INDEX idx_pincodes_district_id
-ON pincodes(district_id);
-
-
---------------------------------------------------------------------------------------------------------------
--- DISCIPLINES
---------------------------------------------------------------------------------------------------------------
-
-CREATE TABLE disciplines (
-
-    id SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-
-    code CITEXT UNIQUE NOT NULL
-        CHECK (length(trim(code)) > 0),
-
-    display_name VARCHAR(50) NOT NULL
-        CHECK (length(trim(display_name)) > 0),
-
-    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
---------------------------------------------------------------------------------------------------------------
 -- USERS
 --------------------------------------------------------------------------------------------------------------
 
@@ -114,7 +32,7 @@ CREATE TABLE users (
             last_name IS NULL
             OR length(trim(last_name)) > 0
         ),
-
+ 
     email CITEXT UNIQUE NOT NULL
         CHECK (length(trim(email)) > 0),
 
@@ -161,6 +79,46 @@ FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column();
 
 --------------------------------------------------------------------------------------------------------------
+-- STATES
+--------------------------------------------------------------------------------------------------------------
+
+CREATE TABLE states (
+    id SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+
+    name CITEXT UNIQUE NOT NULL
+        CHECK (length(trim(name)) > 0),
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+--------------------------------------------------------------------------------------------------------------
+-- DISTRICTS
+--------------------------------------------------------------------------------------------------------------
+
+CREATE TABLE districts (
+    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+
+    name CITEXT NOT NULL
+        CHECK (length(trim(name)) > 0),
+
+    state_id SMALLINT NOT NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_districts_state_id
+        FOREIGN KEY (state_id)
+        REFERENCES states(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE,
+
+    CONSTRAINT unique_district_per_state
+        UNIQUE(name, state_id)
+);
+
+CREATE INDEX idx_districts_state_id
+ON districts(state_id);
+
+--------------------------------------------------------------------------------------------------------------
 -- ACADEMIES
 --------------------------------------------------------------------------------------------------------------
 
@@ -188,6 +146,8 @@ CREATE TABLE academies (
         ON UPDATE CASCADE
 );
 
+
+
 --------------------------------------------------------------------------------------------------------------
 -- ACADEMIES INDEXES
 --------------------------------------------------------------------------------------------------------------
@@ -211,6 +171,9 @@ EXECUTE FUNCTION update_updated_at_column();
 CREATE TABLE invitations (
 
     id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+
+    name VARCHAR(50) NOT NULL
+        CHECK (length(trim(first_name)) > 0),
 
     email CITEXT NOT NULL
         CHECK (length(trim(email)) > 0),
@@ -291,6 +254,84 @@ CREATE TRIGGER invitations_set_updated_at
 BEFORE UPDATE ON invitations
 FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column();
+
+
+
+
+
+
+
+
+
+
+
+--------------------------------------------------------------------------------------------------------------
+-- BORDER
+--------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--------------------------------------------------------------------------------------------------------------
+-- PINCODES
+--------------------------------------------------------------------------------------------------------------
+
+CREATE TABLE pincodes (
+    id INTEGER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+
+    code CHAR(6) UNIQUE NOT NULL
+        CHECK (code ~ '^[0-9]{6}$'),
+
+    district_id INTEGER NOT NULL,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_pincodes_district_id
+        FOREIGN KEY (district_id)
+        REFERENCES districts(id)
+        ON DELETE RESTRICT
+        ON UPDATE CASCADE
+);
+
+CREATE INDEX idx_pincodes_district_id
+ON pincodes(district_id);
+
+
+--------------------------------------------------------------------------------------------------------------
+-- DISCIPLINES
+--------------------------------------------------------------------------------------------------------------
+
+CREATE TABLE disciplines (
+
+    id SMALLINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+
+    code CITEXT UNIQUE NOT NULL
+        CHECK (length(trim(code)) > 0),
+
+    display_name VARCHAR(50) NOT NULL
+        CHECK (length(trim(display_name)) > 0),
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+
+
+
 
 --------------------------------------------------------------------------------------------------------------
 -- STATE ADMINS

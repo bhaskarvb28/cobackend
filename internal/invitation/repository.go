@@ -3,8 +3,8 @@ package invitation
 import (
 	"context"
 	"errors"
-	"time"
 	"strconv"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
@@ -12,119 +12,11 @@ import (
 	"cobackend/internal/shared"
 )
 
-// CreateInvitationRepository creates a new invitation
-// and returns the created invitation response.
-func CreateInvitationRepository(
-	ctx context.Context,
-	email string,
-	roleID int,
-	invitedBy string,
-	tokenHash string,
-	scopeType string,
-	scopeID string,
-	expiresAt time.Time,
-) (int64, error) {
-
-	query := `
-		INSERT INTO invitations (
-			email,
-			role_id,
-			invited_by,
-			token_hash,
-			scope_type,
-			scope_id,
-			expires_at
-		)
-		VALUES (
-			$1, $2, $3,
-			$4, $5, $6, $7
-		)
-		RETURNING id
-	`
-
-	var invitationID int64
-
-	err := db.DB.QueryRow(
-		ctx,
-		query,
-		email,
-		roleID,
-		invitedBy,
-		tokenHash,
-		scopeType,
-		scopeID,
-		expiresAt,
-	).Scan(&invitationID)
-
-	if err != nil {
-		return 0, err
-	}
-
-	return invitationID, nil
-}
-
-func ExistsPendingInvitationByEmail(
-	ctx context.Context,
-	email string,
-) (bool, error) {
-
-	query := `
-		SELECT EXISTS (
-			SELECT 1
-			FROM invitations
-			WHERE email = $1
-			AND status = 'pending'
-		)
-	`
-
-	var exists bool
-
-	err := db.DB.QueryRow(
-		ctx,
-		query,
-		email,
-	).Scan(&exists)
-
-	if err != nil {
-		return false, err
-	}
-
-	return exists, nil
-}
-
-func DeleteInvitationByID(
-	ctx context.Context,
-	id int64,
-) error {
-
-	query := `
-		DELETE FROM invitations
-		WHERE id = $1
-	`
-
-	commandTag, err := db.DB.Exec(
-		ctx,
-		query,
-		id,
-	)
-
-	if err != nil {
-		return err
-	}
-
-	if commandTag.RowsAffected() == 0 {
-		return shared.ErrInvitationNotFound
-	}
-
-	return nil
-}
-
-// GetInvitationsRepository fetches all invitations
-// visible to the authenticated user.
 func GetInvitationsRepository(
 	ctx context.Context,
 	userID string,
 	roles []string,
+	isSuperAdmin bool,
 	query InvitationsQueryParams,
 ) (*PaginatedInvitations, error) {
 
@@ -135,7 +27,7 @@ func GetInvitationsRepository(
 	offset := (query.Page - 1) * query.Limit
 
 	// ----------------------------------------------------------
-	// Count Total Records
+	// Count Query
 	// ----------------------------------------------------------
 
 	var total int
@@ -145,22 +37,47 @@ func GetInvitationsRepository(
 		FROM invitations i
 		JOIN roles r
 			ON r.id = i.role_id
-		WHERE i.invited_by = $1
-		AND r.code = ANY($2)
+		WHERE 1=1
 	`
 
-	countArgs := []interface{}{
-		userID,
-		roles,
+	countArgs := []interface{}{}
+
+	// ----------------------------------------------------------
+	// RBAC Filtering
+	// ----------------------------------------------------------
+
+	if !isSuperAdmin {
+
+		countQuery += `
+			AND i.invited_by = $` +
+			strconv.Itoa(len(countArgs)+1)
+
+		countArgs = append(
+			countArgs,
+			userID,
+		)
+
+		countQuery += `
+			AND r.code = ANY($` +
+			strconv.Itoa(len(countArgs)+1) +
+			`)`
+
+		countArgs = append(
+			countArgs,
+			roles,
+		)
 	}
 
-	// Search Filter
+	// ----------------------------------------------------------
+	// Search
+	// ----------------------------------------------------------
+
 	if query.Search != "" {
 
 		countQuery += `
-			AND (
-				i.email ILIKE '%' || $3 || '%'
-			)
+			AND i.email ILIKE '%' || $` +
+			strconv.Itoa(len(countArgs)+1) +
+			` || '%'
 		`
 
 		countArgs = append(
@@ -169,11 +86,15 @@ func GetInvitationsRepository(
 		)
 	}
 
-	// Status Filter
+	// ----------------------------------------------------------
+	// Status
+	// ----------------------------------------------------------
+
 	if query.Status != "" {
 
 		countQuery += `
-			AND i.status = $` + strconv.Itoa(len(countArgs)+1)
+			AND i.status = $` +
+			strconv.Itoa(len(countArgs)+1)
 
 		countArgs = append(
 			countArgs,
@@ -181,11 +102,15 @@ func GetInvitationsRepository(
 		)
 	}
 
-	// Role Filter
+	// ----------------------------------------------------------
+	// Role
+	// ----------------------------------------------------------
+
 	if query.Role != "" {
 
 		countQuery += `
-			AND r.code = $` + strconv.Itoa(len(countArgs)+1)
+			AND r.code = $` +
+			strconv.Itoa(len(countArgs)+1)
 
 		countArgs = append(
 			countArgs,
@@ -204,38 +129,96 @@ func GetInvitationsRepository(
 	}
 
 	// ----------------------------------------------------------
-	// Fetch Invitations
+	// Data Query
 	// ----------------------------------------------------------
 
 	dataQuery := `
 		SELECT
 			i.id,
 			i.email,
+
 			r.code,
+			r.display_name,
+
 			i.scope_type,
 			i.scope_id,
+
+			COALESCE(
+				s.name,
+				d.name,
+				a.name
+			) AS organization_name,
+
 			i.status,
+
+			u.id,
+			u.first_name,
+			u.last_name,
+
 			i.expires_at,
 			i.created_at
+
 		FROM invitations i
+
 		JOIN roles r
 			ON r.id = i.role_id
-		WHERE i.invited_by = $1
-		AND r.code = ANY($2)
+
+		JOIN users u
+			ON u.id = i.invited_by
+
+		LEFT JOIN states s
+			ON i.scope_type = 'state'
+			AND s.id::text = i.scope_id
+
+		LEFT JOIN districts d
+			ON i.scope_type = 'district'
+			AND d.id::text = i.scope_id
+
+		LEFT JOIN academies a
+			ON i.scope_type = 'academy'
+			AND a.id::text = i.scope_id
+
+		WHERE 1=1
 	`
 
-	dataArgs := []interface{}{
-		userID,
-		roles,
+	dataArgs := []interface{}{}
+
+	// ----------------------------------------------------------
+	// RBAC Filtering
+	// ----------------------------------------------------------
+
+	if !isSuperAdmin {
+
+		dataQuery += `
+			AND i.invited_by = $` +
+			strconv.Itoa(len(dataArgs)+1)
+
+		dataArgs = append(
+			dataArgs,
+			userID,
+		)
+
+		dataQuery += `
+			AND r.code = ANY($` +
+			strconv.Itoa(len(dataArgs)+1) +
+			`)`
+
+		dataArgs = append(
+			dataArgs,
+			roles,
+		)
 	}
 
-	// Search Filter
+	// ----------------------------------------------------------
+	// Search
+	// ----------------------------------------------------------
+
 	if query.Search != "" {
 
 		dataQuery += `
-			AND (
-				i.email ILIKE '%' || $3 || '%'
-			)
+			AND i.email ILIKE '%' || $` +
+			strconv.Itoa(len(dataArgs)+1) +
+			` || '%'
 		`
 
 		dataArgs = append(
@@ -244,11 +227,15 @@ func GetInvitationsRepository(
 		)
 	}
 
-	// Status Filter
+	// ----------------------------------------------------------
+	// Status
+	// ----------------------------------------------------------
+
 	if query.Status != "" {
 
 		dataQuery += `
-			AND i.status = $` + strconv.Itoa(len(dataArgs)+1)
+			AND i.status = $` +
+			strconv.Itoa(len(dataArgs)+1)
 
 		dataArgs = append(
 			dataArgs,
@@ -256,11 +243,15 @@ func GetInvitationsRepository(
 		)
 	}
 
-	// Role Filter
+	// ----------------------------------------------------------
+	// Role
+	// ----------------------------------------------------------
+
 	if query.Role != "" {
 
 		dataQuery += `
-			AND r.code = $` + strconv.Itoa(len(dataArgs)+1)
+			AND r.code = $` +
+			strconv.Itoa(len(dataArgs)+1)
 
 		dataArgs = append(
 			dataArgs,
@@ -268,11 +259,17 @@ func GetInvitationsRepository(
 		)
 	}
 
+	// ----------------------------------------------------------
 	// Sorting
+	// ----------------------------------------------------------
+
 	dataQuery += `
 		ORDER BY ` + query.SortBy + ` ` + query.Order
 
+	// ----------------------------------------------------------
 	// Pagination
+	// ----------------------------------------------------------
+
 	dataQuery += `
 		LIMIT $` + strconv.Itoa(len(dataArgs)+1) + `
 		OFFSET $` + strconv.Itoa(len(dataArgs)+2)
@@ -301,19 +298,68 @@ func GetInvitationsRepository(
 
 		var invitation InvitationResponse
 
+		var roleKey string
+		var roleLabel string
+
+		var scopeType *string
+		var scopeID *string
+		var organizationName *string
+
+		var createdByID string
+		var firstName string
+		var lastName *string
+
 		err := rows.Scan(
 			&invitation.ID,
 			&invitation.Email,
-			&invitation.Role,
-			&invitation.ScopeType,
-			&invitation.ScopeID,
+
+			&roleKey,
+			&roleLabel,
+
+			&scopeType,
+			&scopeID,
+			&organizationName,
+
 			&invitation.Status,
+
+			&createdByID,
+			&firstName,
+			&lastName,
+
 			&invitation.ExpiresAt,
 			&invitation.CreatedAt,
 		)
 
 		if err != nil {
 			return nil, err
+		}
+
+		invitation.Role = RoleResponse{
+			Key:   roleKey,
+			Label: roleLabel,
+		}
+
+		if scopeType != nil &&
+			scopeID != nil &&
+			organizationName != nil {
+
+			invitation.Organization =
+				&OrganizationResponse{
+					Type: *scopeType,
+					ID:   *scopeID,
+					Name: *organizationName,
+				}
+		}
+
+		fullName := firstName
+
+		if lastName != nil {
+			fullName += " " + *lastName
+		}
+
+		invitation.CreatedBy = UserSummary{
+			ID:   createdByID,
+			Name: fullName,
 		}
 
 		invitations = append(
@@ -326,17 +372,15 @@ func GetInvitationsRepository(
 		return nil, err
 	}
 
-	// ----------------------------------------------------------
-	// Pagination Metadata
-	// ----------------------------------------------------------
-
-	totalPages := 0
+	totalPages := 1
 
 	if total > 0 {
-		totalPages = (total + query.Limit - 1) / query.Limit
+		totalPages =
+			(total + query.Limit - 1) /
+				query.Limit
 	}
 
-	response := &PaginatedInvitations{
+	return &PaginatedInvitations{
 		Items:       invitations,
 		Page:        query.Page,
 		Limit:       query.Limit,
@@ -344,38 +388,302 @@ func GetInvitationsRepository(
 		TotalPages:  totalPages,
 		HasNext:     query.Page < totalPages,
 		HasPrevious: query.Page > 1,
-	}
-
-	return response, nil
+	}, nil
 }
 
+
+// CreateInvitationRepository creates a new invitation
+// and returns the created invitation ID.
+func CreateInvitationRepository(
+	ctx context.Context,
+	name string,
+	email string,
+	roleID int,
+	invitedBy string,
+	tokenHash string,
+	scopeType string,
+	scopeID string,
+	expiresAt time.Time,
+) (int64, error) {
+
+	query := `
+		INSERT INTO invitations (
+			name,
+			email,
+			role_id,
+			invited_by,
+			token_hash,
+			scope_type,
+			scope_id,
+			expires_at
+		)
+		VALUES (
+			$1, $2, $3, $4,
+			$5, $6, $7, $8
+		)
+		RETURNING id
+	`
+
+	var invitationID int64
+
+	err := db.DB.QueryRow(
+		ctx,
+		query,
+		name,
+		email,
+		roleID,
+		invitedBy,
+		tokenHash,
+		scopeType,
+		scopeID,
+		expiresAt,
+	).Scan(&invitationID)
+
+	if err != nil {
+		return 0, err
+	}
+
+	return invitationID, nil
+}
+
+
+// GetInvitationByTokenRepository fetches invitation
+// details using invitation token hash.
+func GetInvitationByTokenRepository(
+	ctx context.Context,
+	hashedToken string,
+) (*InvitationResponse, error) {
+
+	query := `
+		SELECT
+			i.id,
+			i.email,
+
+			r.code,
+			r.display_name,
+
+			i.scope_type,
+			i.scope_id,
+
+			COALESCE(
+				s.name,
+				d.name,
+				a.name
+			) AS organization_name,
+
+			i.status,
+
+			i.invited_by,
+			i.accepted_at,
+			i.used_by,
+
+			u.id,
+			u.first_name,
+			u.last_name,
+
+			i.expires_at,
+			i.created_at
+
+		FROM invitations i
+
+		JOIN roles r
+			ON r.id = i.role_id
+
+		JOIN users u
+			ON u.id = i.invited_by
+
+		LEFT JOIN states s
+			ON i.scope_type = 'state'
+			AND s.id::text = i.scope_id
+
+		LEFT JOIN districts d
+			ON i.scope_type = 'district'
+			AND d.id::text = i.scope_id
+
+		LEFT JOIN academies a
+			ON i.scope_type = 'academy'
+			AND a.id::text = i.scope_id
+
+		WHERE i.token_hash = $1
+
+		LIMIT 1
+	`
+
+	var invitation InvitationResponse
+
+	var roleKey string
+	var roleLabel string
+
+	var scopeType *string
+	var scopeID *string
+	var organizationName *string
+
+	var invitedBy string
+
+	var acceptedAt *time.Time
+	var usedBy *string
+
+	var createdByID string
+	var firstName string
+	var lastName *string
+
+	err := db.DB.QueryRow(
+		ctx,
+		query,
+		hashedToken,
+	).Scan(
+		&invitation.ID,
+		&invitation.Email,
+
+		&roleKey,
+		&roleLabel,
+
+		&scopeType,
+		&scopeID,
+		&organizationName,
+
+		&invitation.Status,
+
+		&invitedBy,
+		&acceptedAt,
+		&usedBy,
+
+		&createdByID,
+		&firstName,
+		&lastName,
+
+		&invitation.ExpiresAt,
+		&invitation.CreatedAt,
+	)
+
+	if err != nil {
+
+		if errors.Is(
+			err,
+			pgx.ErrNoRows,
+		) {
+			return nil, nil
+		}
+
+		return nil, err
+	}
+
+	// ----------------------------------------------------------
+	// Primitive Fields
+	// ----------------------------------------------------------
+
+	invitation.RoleCode = roleKey
+
+	invitation.ScopeType = scopeType
+	invitation.ScopeID = scopeID
+
+	invitation.InvitedBy = invitedBy
+
+	invitation.AcceptedAt = acceptedAt
+	invitation.UsedBy = usedBy
+
+	// ----------------------------------------------------------
+	// Role DTO
+	// ----------------------------------------------------------
+
+	invitation.Role =
+		RoleResponse{
+			Key: roleKey,
+
+			Label: roleLabel,
+		}
+
+	// ----------------------------------------------------------
+	// Organization DTO
+	// ----------------------------------------------------------
+
+	if scopeType != nil &&
+		scopeID != nil &&
+		organizationName != nil {
+
+		invitation.Organization =
+			&OrganizationResponse{
+				Type: *scopeType,
+				ID:   *scopeID,
+				Name: *organizationName,
+			}
+	}
+
+	// ----------------------------------------------------------
+	// Created By DTO
+	// ----------------------------------------------------------
+
+	fullName := firstName
+
+	if lastName != nil {
+		fullName += " " + *lastName
+	}
+
+	invitation.CreatedBy =
+		UserSummary{
+			ID: createdByID,
+
+			Name: fullName,
+		}
+
+	return &invitation, nil
+}
+
+
+func DeleteInvitationByID(
+	ctx context.Context,
+	id int64,
+) error {
+
+	query := `
+		DELETE FROM invitations
+		WHERE id = $1
+	`
+
+	commandTag, err := db.DB.Exec(
+		ctx,
+		query,
+		id,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	if commandTag.RowsAffected() == 0 {
+		return shared.ErrInvitationNotFound
+	}
+
+	return nil
+}
+
+
 // GetInvitationByIDRepository fetches invitation details
-// for the provided invitation ID.
+// required for permission validation.
 func GetInvitationByIDRepository(
 	ctx context.Context,
 	invitationID int64,
 	userID string,
 	roles []string,
-) (*InvitationResponse, error) {
+) (*InvitationPermissionCheck, error) {
 
-	var invitation InvitationResponse
+	var invitation InvitationPermissionCheck
 
 	err := db.DB.QueryRow(
 		ctx,
 		`
 		SELECT
 			i.id,
-			i.email,
-			r.code,
-			i.status,
-			i.expires_at,
-			i.created_at
+			i.invited_by,
+			r.code::text,
+			i.status::text,
+			i.expires_at
 		FROM invitations i
 		JOIN roles r
 			ON r.id = i.role_id
 		WHERE i.id = $1
 		AND i.invited_by = $2
-		AND r.code = ANY($3)
+		AND r.code::text = ANY($3)
 		LIMIT 1
 		`,
 		invitationID,
@@ -383,11 +691,10 @@ func GetInvitationByIDRepository(
 		roles,
 	).Scan(
 		&invitation.ID,
-		&invitation.Email,
-		&invitation.Role,
+		&invitation.InvitedBy,
+		&invitation.RoleCode,
 		&invitation.Status,
 		&invitation.ExpiresAt,
-		&invitation.CreatedAt,
 	)
 
 	if err != nil {
@@ -402,33 +709,34 @@ func GetInvitationByIDRepository(
 	return &invitation, nil
 }
 
-// RevokeInvitationRepository revokes an existing invitation.
-func RevokeInvitationRepository(
-	ctx context.Context,
-	invitationID int64,
-) error {
 
-	commandTag, err := db.DB.Exec(
+func ExistsPendingInvitationByEmail(
+	ctx context.Context,
+	email string,
+) (bool, error) {
+
+	query := `
+		SELECT EXISTS (
+			SELECT 1
+			FROM invitations
+			WHERE email = $1
+			AND status = 'pending'
+		)
+	`
+
+	var exists bool
+
+	err := db.DB.QueryRow(
 		ctx,
-		`
-		UPDATE invitations
-		SET
-			status = 'revoked',
-			updated_at = CURRENT_TIMESTAMP
-		WHERE id = $1
-		`,
-		invitationID,
-	)
+		query,
+		email,
+	).Scan(&exists)
 
 	if err != nil {
-		return err
+		return false, err
 	}
 
-	if commandTag.RowsAffected() == 0 {
-		return shared.ErrInvitationNotFound
-	}
-
-	return nil
+	return exists, nil
 }
 
 // AcceptInvitationTx marks an invitation
@@ -466,55 +774,99 @@ func AcceptInvitationTx(
 	return nil
 }
 
-// GetInvitationByTokenRepository fetches invitation
-// details using a hashed invitation token.
-func GetInvitationByTokenRepository(
+//------------------------------------------------------------------------------------------------
+//BORDER
+//------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+// GetInvitationByIDRepository fetches invitation details
+// for the provided invitation ID.
+// func GetInvitationByIDRepository(
+// 	ctx context.Context,
+// 	invitationID int64,
+// 	userID string,
+// 	roles []string,
+// ) (*InvitationResponse, error) {
+
+// 	var invitation InvitationResponse
+
+// 	err := db.DB.QueryRow(
+// 		ctx,
+// 		`
+// 		SELECT
+// 			i.id,
+// 			i.email,
+// 			r.code,
+// 			i.status,
+// 			i.expires_at,
+// 			i.created_at
+// 		FROM invitations i
+// 		JOIN roles r
+// 			ON r.id = i.role_id
+// 		WHERE i.id = $1
+// 		AND i.invited_by = $2
+// 		AND r.code = ANY($3)
+// 		LIMIT 1
+// 		`,
+// 		invitationID,
+// 		userID,
+// 		roles,
+// 	).Scan(
+// 		&invitation.ID,
+// 		&invitation.Email,
+// 		&invitation.Role,
+// 		&invitation.Status,
+// 		&invitation.ExpiresAt,
+// 		&invitation.CreatedAt,
+// 	)
+
+// 	if err != nil {
+
+// 		if errors.Is(err, pgx.ErrNoRows) {
+// 			return nil, nil
+// 		}
+
+// 		return nil, err
+// 	}
+
+// 	return &invitation, nil
+// }
+
+// RevokeInvitationRepository revokes an existing invitation.
+func RevokeInvitationRepository(
 	ctx context.Context,
-	hashedToken string,
-) (*InvitationResponse, error) {
+	invitationID int64,
+) error {
 
-	var invitation InvitationResponse
-
-	err := db.DB.QueryRow(
+	commandTag, err := db.DB.Exec(
 		ctx,
 		`
-		SELECT
-			i.id,
-			i.email,
-			r.code,
-			i.invited_by,
-			i.scope_type,
-			i.scope_id,
-			i.status,
-			i.expires_at,
-			i.created_at
-		FROM invitations i
-		JOIN roles r
-			ON r.id = i.role_id
-		WHERE i.token_hash = $1
-		LIMIT 1
+		UPDATE invitations
+		SET
+			status = 'revoked',
+			updated_at = CURRENT_TIMESTAMP
+		WHERE id = $1
 		`,
-		hashedToken,
-	).Scan(
-		&invitation.ID,
-		&invitation.Email,
-		&invitation.Role,
-		&invitation.InvitedBy,
-		&invitation.ScopeType,
-		&invitation.ScopeID,
-		&invitation.Status,
-		&invitation.ExpiresAt,
-		&invitation.CreatedAt,
+		invitationID,
 	)
 
 	if err != nil {
-
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
-		}
-
-		return nil, err
+		return err
 	}
 
-	return &invitation, nil
+	if commandTag.RowsAffected() == 0 {
+		return shared.ErrInvitationNotFound
+	}
+
+	return nil
 }
+
+
+

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	brevo "github.com/getbrevo/brevo-go/lib"
 )
@@ -34,7 +35,8 @@ func SendBrevoEmail(
 	//------------------------------------------------
 
 	sender := brevo.SendSmtpEmailSender{
-		Name:  "CO Backend",
+		Name: "CO Backend",
+
 		Email: os.Getenv(
 			"BREVO_SENDER_EMAIL",
 		),
@@ -93,44 +95,183 @@ func SendBrevoEmail(
 	return nil
 }
 
+// ------------------------------------------------
+// Invitation Email
+// ------------------------------------------------
+
 func SendInvitationEmail(
 	toEmail string,
+	name string,
 	inviteLink string,
 	role string,
 ) error {
 
-	subject := fmt.Sprintf(
-		"You're invited as %s",
+	//------------------------------------------------
+	// Format Role Label
+	//------------------------------------------------
+
+	roleLabel := strings.ReplaceAll(
 		role,
+		"_",
+		" ",
 	)
+
+	roleLabel = strings.Title(
+		roleLabel,
+	)
+
+	//------------------------------------------------
+	// Subject
+	//------------------------------------------------
+
+	subject := fmt.Sprintf(
+		"You've been invited as %s",
+		roleLabel,
+	)
+
+	//------------------------------------------------
+	// HTML Content
+	//------------------------------------------------
 
 	htmlContent := fmt.Sprintf(`
-		<h2>Invitation</h2>
+<!DOCTYPE html>
+<html>
 
-		<p>
-			You have been invited as
-			<strong>%s</strong>.
-		</p>
+<head>
+	<meta charset="UTF-8" />
 
-		<p>
-			Click below to complete
-			your account setup:
-		</p>
+	<title>
+		Invitation
+	</title>
+</head>
 
-		<p>
-			<a href="%s">
-				Complete Setup
-			</a>
-		</p>
+<body style="
+	margin: 0;
+	padding: 0;
+	background-color: #f4f4f5;
+	font-family: Arial, sans-serif;
+">
 
-		<p>
-			This link expires in
-			24 hours.
-		</p>
-	`,
-		role,
+	<table
+		width="100%%"
+		cellpadding="0"
+		cellspacing="0"
+		style="
+			padding: 40px 20px;
+		"
+	>
+		<tr>
+			<td align="center">
+
+				<table
+					width="600"
+					cellpadding="0"
+					cellspacing="0"
+					style="
+						background-color: white;
+						border-radius: 12px;
+						padding: 40px;
+					"
+				>
+
+					<tr>
+						<td>
+
+							<h1 style="
+								margin: 0;
+								font-size: 28px;
+								color: #111827;
+							">
+								You're Invited
+							</h1>
+
+							<p style="
+								margin-top: 24px;
+								font-size: 16px;
+								line-height: 1.7;
+								color: #374151;
+							">
+								Hi %s,
+							</p>
+
+							<p style="
+								font-size: 16px;
+								line-height: 1.7;
+								color: #374151;
+							">
+								You have been invited to join the platform as
+								<strong>%s</strong>.
+							</p>
+
+							<p style="
+								font-size: 16px;
+								line-height: 1.7;
+								color: #374151;
+							">
+								Click the button below to accept your invitation
+								and complete your account setup.
+							</p>
+
+							<div style="
+								margin-top: 36px;
+								margin-bottom: 36px;
+								text-align: center;
+							">
+
+								<a
+									href="%s"
+									style="
+										display: inline-block;
+										background-color: #111827;
+										color: white;
+										text-decoration: none;
+										padding: 14px 28px;
+										border-radius: 8px;
+										font-size: 16px;
+										font-weight: 600;
+									"
+								>
+									Accept Invitation
+								</a>
+							</div>
+
+							<p style="
+								font-size: 14px;
+								line-height: 1.7;
+								color: #6b7280;
+							">
+								This invitation link will expire in 24 hours.
+							</p>
+
+							<p style="
+								margin-top: 32px;
+								font-size: 14px;
+								color: #9ca3af;
+							">
+								If you did not expect this invitation,
+								you can safely ignore this email.
+							</p>
+
+						</td>
+					</tr>
+
+				</table>
+
+			</td>
+		</tr>
+	</table>
+
+</body>
+</html>
+`,
+		name,
+		roleLabel,
 		inviteLink,
 	)
+
+	//------------------------------------------------
+	// Send Email
+	//------------------------------------------------
 
 	return SendBrevoEmail(
 		toEmail,

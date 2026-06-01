@@ -1,22 +1,171 @@
 package invitation
 
 import (
+	// "encoding/json"
+	// "errors"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
-	"fmt"
+
+	// "fmt"
 
 	"github.com/go-chi/chi/v5"
 
+	"cobackend/internal/middleware"
 	"cobackend/internal/shared"
 	"cobackend/internal/utils"
-	"cobackend/internal/middleware"
 	"cobackend/internal/validation"
+	// "cobackend/internal/validation"
 )
 
-// CreateInvitationHandler creates a new invitation.
+// GetInvitationsHandler returns all invitations.
+//
+// Authorization:
+//
+//	- super_admin
+//	- state_admin
+//	- district_admin
+//	- academy_admin
+//
+// Responses:
+//
+//	- 200:
+//	  Invitations fetched successfully.
+//
+//	- 401:
+//	  Unauthorized.
+//
+//	- 500:
+//	  Internal server error.
+func GetInvitationsHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	// ----------------------------------------------------------
+	// Get Authenticated User
+	// ----------------------------------------------------------
+
+	userID := r.Context().
+		Value(middleware.UserIDKey).
+		(string)
+
+	role := r.Context().
+		Value(middleware.RoleNameKey).
+		(string)
+
+	// ----------------------------------------------------------
+	// Parse Query Parameters
+	// ----------------------------------------------------------
+
+	query := InvitationsQueryParams{
+		Page:   1,
+		Limit:  10,
+		SortBy: "created_at",
+		Order:  "desc",
+	}
+
+	q := r.URL.Query()
+
+	// Page
+	if pageStr := q.Get("page"); pageStr != "" {
+
+		page, err := strconv.Atoi(pageStr)
+
+		if err == nil && page > 0 {
+			query.Page = page
+		}
+	}
+
+	// Limit
+	if limitStr := q.Get("limit"); limitStr != "" {
+
+		limit, err := strconv.Atoi(limitStr)
+
+		if err == nil && limit > 0 && limit <= 100 {
+			query.Limit = limit
+		}
+	}
+
+	// Filters
+	query.Search = q.Get("search")
+	query.Status = q.Get("status")
+	query.Role = q.Get("role")
+
+	// Sorting
+	if sortBy := q.Get("sort_by"); sortBy != "" {
+		query.SortBy = sortBy
+	}
+
+	if order := q.Get("order"); order != "" {
+
+		order = strings.ToLower(order)
+
+		if order == "asc" || order == "desc" {
+			query.Order = order
+		}
+	}
+
+	// ----------------------------------------------------------
+	// Get Invitations
+	// ----------------------------------------------------------
+
+	invitations, err := GetInvitationsService(
+		r.Context(),
+		userID,
+		role,
+		query,
+	)
+
+	if err != nil {
+
+		switch err {
+
+		case shared.ErrForbidden:
+
+			utils.WriteJSON(
+				w,
+				http.StatusForbidden,
+				shared.APIResponse{
+					Success: false,
+					Message: "forbidden",
+				},
+			)
+
+			return
+		}
+
+		utils.WriteJSON(
+			w,
+			http.StatusInternalServerError,
+			shared.APIResponse{
+				Success: false,
+				Message: "failed to fetch invitations",
+			},
+		)
+
+		return
+	}
+
+	// ----------------------------------------------------------
+	// Success Response
+	// ----------------------------------------------------------
+
+	utils.WriteJSON(
+		w,
+		http.StatusOK,
+		shared.APIResponse{
+			Success: true,
+			Message: "invitations fetched successfully",
+			Data:    invitations,
+		},
+	)
+}
+
+// CreateInviteHandler creates a new invitation.
 //
 // Authorization:
 //
@@ -28,11 +177,11 @@ import (
 // Request Body:
 //
 //	{
+//		"name": "John Doe",
 //		"email": "john@example.com",
-//		"role_id": 2,
-//		"state_id": 1,
-//		"district_id": 10,
-//		"academy_id": "uuid"
+//		"role": "state_admin",
+//		"scope_type": "state",
+//		"scope_id": "1"
 //	}
 //
 // Responses:
@@ -51,7 +200,7 @@ import (
 //
 //	- 500:
 //	  Internal server error.
-func CreateInvitationHandler(
+func CreateInviteHandler(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
@@ -87,6 +236,10 @@ func CreateInvitationHandler(
 	// Normalize Input
 	//------------------------------------------------
 
+	input.Name = strings.TrimSpace(
+		input.Name,
+	)
+
 	input.Email = strings.ToLower(
 		strings.TrimSpace(input.Email),
 	)
@@ -102,6 +255,24 @@ func CreateInvitationHandler(
 	input.ScopeID = strings.TrimSpace(
 		input.ScopeID,
 	)
+
+	//------------------------------------------------
+	// Validate Name
+	//------------------------------------------------
+
+	if input.Name == "" {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "name is required",
+			},
+		)
+
+		return
+	}
 
 	//------------------------------------------------
 	// Validate Email
@@ -156,6 +327,42 @@ func CreateInvitationHandler(
 	}
 
 	//------------------------------------------------
+	// Validate Scope Type
+	//------------------------------------------------
+
+	if input.ScopeType == "" {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "scope_type is required",
+			},
+		)
+
+		return
+	}
+
+	//------------------------------------------------
+	// Validate Scope ID
+	//------------------------------------------------
+
+	if input.ScopeID == "" {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "scope_id is required",
+			},
+		)
+
+		return
+	}
+
+	//------------------------------------------------
 	// Authenticated User
 	//------------------------------------------------
 
@@ -181,7 +388,7 @@ func CreateInvitationHandler(
 	// Create Invitation
 	//------------------------------------------------
 
-	response, err := CreateInvitationService(
+	err = CreateInvitationService(
 		r.Context(),
 		input,
 		authUserID,
@@ -334,184 +541,12 @@ func CreateInvitationHandler(
 		shared.APIResponse{
 			Success: true,
 			Message: "invitation created successfully",
-			Data:    response,
 		},
 	)
 }
 
-// GetInvitationsHandler returns all invitations.
-//
-// Authorization:
-//
-//	- super_admin
-//	- state_admin
-//	- district_admin
-//	- academy_admin
-//
-// Responses:
-//
-//	- 200:
-//	  Invitations fetched successfully.
-//
-//	- 401:
-//	  Unauthorized.
-//
-//	- 500:
-//	  Internal server error.
-func GetInvitationsHandler(
-	w http.ResponseWriter,
-	r *http.Request,
-) {
 
-	// ----------------------------------------------------------
-	// Get Authenticated User
-	// ----------------------------------------------------------
-
-	userID := r.Context().
-		Value(middleware.UserIDKey).
-		(string)
-
-	role := r.Context().
-		Value(middleware.RoleNameKey).
-		(string)
-
-	// ----------------------------------------------------------
-	// Parse Query Parameters
-	// ----------------------------------------------------------
-
-	query := InvitationsQueryParams{
-		Page:   1,
-		Limit:  10,
-		SortBy: "created_at",
-		Order:  "desc",
-	}
-
-	q := r.URL.Query()
-
-	// Page
-	if pageStr := q.Get("page"); pageStr != "" {
-
-		page, err := strconv.Atoi(pageStr)
-
-		if err == nil && page > 0 {
-			query.Page = page
-		}
-	}
-
-	// Limit
-	if limitStr := q.Get("limit"); limitStr != "" {
-
-		limit, err := strconv.Atoi(limitStr)
-
-		if err == nil && limit > 0 && limit <= 100 {
-			query.Limit = limit
-		}
-	}
-
-	// Filters
-	query.Search = q.Get("search")
-	query.Status = q.Get("status")
-	query.Role = q.Get("role")
-
-	// Sorting
-	if sortBy := q.Get("sort_by"); sortBy != "" {
-		query.SortBy = sortBy
-	}
-
-	if order := q.Get("order"); order != "" {
-
-		order = strings.ToLower(order)
-
-		if order == "asc" || order == "desc" {
-			query.Order = order
-		}
-	}
-
-	// ----------------------------------------------------------
-	// Get Invitations
-	// ----------------------------------------------------------
-
-	invitations, err := GetInvitationsService(
-		r.Context(),
-		userID,
-		role,
-		query,
-	)
-
-	if err != nil {
-
-		switch err {
-
-		case shared.ErrForbidden:
-
-			utils.WriteJSON(
-				w,
-				http.StatusForbidden,
-				shared.APIResponse{
-					Success: false,
-					Message: "forbidden",
-				},
-			)
-
-			return
-		}
-
-		utils.WriteJSON(
-			w,
-			http.StatusInternalServerError,
-			shared.APIResponse{
-				Success: false,
-				Message: "failed to fetch invitations",
-			},
-		)
-
-		return
-	}
-
-	// ----------------------------------------------------------
-	// Success Response
-	// ----------------------------------------------------------
-
-	utils.WriteJSON(
-		w,
-		http.StatusOK,
-		shared.APIResponse{
-			Success: true,
-			Message: "invitations fetched successfully",
-			Data:    invitations,
-		},
-	)
-}
-
-// GetInvitationByIDHandler returns invitation details
-// for the provided invitation ID.
-//
-// Authorization:
-//
-//	- super_admin
-//	- state_admin
-//	- district_admin
-//	- academy_admin
-//
-// Path Params:
-//
-//	- id:
-//	  Invitation ID.
-//
-// Responses:
-//
-//	- 200:
-//	  Invitation fetched successfully.
-//
-//	- 400:
-//	  Invalid invitation ID.
-//
-//	- 404:
-//	  Invitation not found.
-//
-//	- 500:
-//	  Internal server error.
-func GetInvitationByIDHandler(
+func DeleteInvitationHandler(
 	w http.ResponseWriter,
 	r *http.Request,
 ) {
@@ -558,10 +593,10 @@ func GetInvitationByIDHandler(
 		(string)
 
 	// ----------------------------------------------------------
-	// Fetch Invitation
+	// Delete Invitation
 	// ----------------------------------------------------------
 
-	invitation, err := GetInvitationByIDService(
+	err = DeleteInvitationService(
 		r.Context(),
 		id,
 		userID,
@@ -593,6 +628,114 @@ func GetInvitationByIDHandler(
 				shared.APIResponse{
 					Success: false,
 					Message: "forbidden",
+				},
+			)
+
+			return
+		}
+
+		utils.WriteJSON(
+			w,
+			http.StatusInternalServerError,
+			shared.APIResponse{
+				Success: false,
+				Message: "failed to delete invitation",
+			},
+		)
+
+		return
+	}
+
+	// ----------------------------------------------------------
+	// Success Response
+	// ----------------------------------------------------------
+
+	utils.WriteJSON(
+		w,
+		http.StatusOK,
+		shared.APIResponse{
+			Success: true,
+			Message: "invitation deleted successfully",
+		},
+	)
+}
+
+// GetInvitationByTokenHandler fetches invitation
+// details using an invitation token.
+//
+// Public Route.
+func GetInvitationByTokenHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	// ----------------------------------------------------------
+	// Get Token
+	// ----------------------------------------------------------
+
+	token := chi.URLParam(r, "token")
+
+	if token == "" {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "invitation token is required",
+			},
+		)
+
+		return
+	}
+
+	// ----------------------------------------------------------
+	// Get Invitation
+	// ----------------------------------------------------------
+
+	invitation, err := GetInvitationByTokenService(
+		r.Context(),
+		token,
+	)
+
+	if err != nil {
+
+		switch err {
+
+		case shared.ErrInvitationNotFound:
+
+			utils.WriteJSON(
+				w,
+				http.StatusNotFound,
+				shared.APIResponse{
+					Success: false,
+					Message: "invitation not found",
+				},
+			)
+
+			return
+
+		case shared.ErrInvitationExpired:
+
+			utils.WriteJSON(
+				w,
+				http.StatusBadRequest,
+				shared.APIResponse{
+					Success: false,
+					Message: "invitation has expired",
+				},
+			)
+
+			return
+
+		case shared.ErrInvitationRevoked:
+
+			utils.WriteJSON(
+				w,
+				http.StatusBadRequest,
+				shared.APIResponse{
+					Success: false,
+					Message: "invitation has been revoked",
 				},
 			)
 
@@ -626,153 +769,6 @@ func GetInvitationByIDHandler(
 	)
 }
 
-// RevokeInvitationHandler revokes an existing invitation.
-//
-// Authorization:
-//
-//	- super_admin
-//	- state_admin
-//	- district_admin
-//	- academy_admin
-func RevokeInvitationHandler(
-	w http.ResponseWriter,
-	r *http.Request,
-) {
-
-	// ----------------------------------------------------------
-	// Parse Path Parameter
-	// ----------------------------------------------------------
-
-	idStr := chi.URLParam(
-		r,
-		"id",
-	)
-
-	id, err := strconv.ParseInt(
-		idStr,
-		10,
-		64,
-	)
-
-	if err != nil {
-
-		utils.WriteJSON(
-			w,
-			http.StatusBadRequest,
-			shared.APIResponse{
-				Success: false,
-				Message: "invalid invitation id",
-			},
-		)
-
-		return
-	}
-
-	// ----------------------------------------------------------
-	// Get Authenticated User
-	// ----------------------------------------------------------
-
-	userID := r.Context().
-		Value(middleware.UserIDKey).
-		(string)
-
-	role := r.Context().
-		Value(middleware.RoleNameKey).
-		(string)
-
-	// ----------------------------------------------------------
-	// Revoke Invitation
-	// ----------------------------------------------------------
-
-	err = RevokeInvitationService(
-		r.Context(),
-		id,
-		userID,
-		role,
-	)
-
-	if err != nil {
-
-		switch err {
-
-		case shared.ErrInvitationNotFound:
-
-			utils.WriteJSON(
-				w,
-				http.StatusNotFound,
-				shared.APIResponse{
-					Success: false,
-					Message: "invitation not found",
-				},
-			)
-
-			return
-
-		case shared.ErrForbidden:
-
-			utils.WriteJSON(
-				w,
-				http.StatusForbidden,
-				shared.APIResponse{
-					Success: false,
-					Message: "forbidden",
-				},
-			)
-
-			return
-
-		case shared.ErrInvitationAlreadyAccepted:
-
-			utils.WriteJSON(
-				w,
-				http.StatusBadRequest,
-				shared.APIResponse{
-					Success: false,
-					Message: "invitation already accepted",
-				},
-			)
-
-			return
-
-		case shared.ErrInvitationAlreadyRevoked:
-
-			utils.WriteJSON(
-				w,
-				http.StatusBadRequest,
-				shared.APIResponse{
-					Success: false,
-					Message: "invitation already revoked",
-				},
-			)
-
-			return
-		}
-
-		utils.WriteJSON(
-			w,
-			http.StatusInternalServerError,
-			shared.APIResponse{
-				Success: false,
-				Message: "failed to revoke invitation",
-			},
-		)
-
-		return
-	}
-
-	// ----------------------------------------------------------
-	// Success Response
-	// ----------------------------------------------------------
-
-	utils.WriteJSON(
-		w,
-		http.StatusOK,
-		shared.APIResponse{
-			Success: true,
-			Message: "invitation revoked successfully",
-		},
-	)
-}
 
 // AcceptInvitationHandler accepts an invitation
 // using a valid invitation token.
@@ -935,111 +931,167 @@ func AcceptInvitationHandler(
 	)
 }
 
-// GetInvitationByTokenHandler fetches invitation
-// details using an invitation token.
+
+
+
+
+
+//------------------------------------------------------------------------------------------------
+//BORDER
+//------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+// GetInvitationByIDHandler returns invitation details
+// for the provided invitation ID.
 //
-// Public Route.
-func GetInvitationByTokenHandler(
-	w http.ResponseWriter,
-	r *http.Request,
-) {
+// Authorization:
+//
+//	- super_admin
+//	- state_admin
+//	- district_admin
+//	- academy_admin
+//
+// Path Params:
+//
+//	- id:
+//	  Invitation ID.
+//
+// Responses:
+//
+//	- 200:
+//	  Invitation fetched successfully.
+//
+//	- 400:
+//	  Invalid invitation ID.
+//
+//	- 404:
+//	  Invitation not found.
+//
+//	- 500:
+//	  Internal server error.
+// func GetInvitationByIDHandler(
+// 	w http.ResponseWriter,
+// 	r *http.Request,
+// ) {
 
-	// ----------------------------------------------------------
-	// Get Token
-	// ----------------------------------------------------------
+// 	// ----------------------------------------------------------
+// 	// Parse Path Parameter
+// 	// ----------------------------------------------------------
 
-	token := chi.URLParam(r, "token")
+// 	idStr := chi.URLParam(
+// 		r,
+// 		"id",
+// 	)
 
-	if token == "" {
+// 	id, err := strconv.ParseInt(
+// 		idStr,
+// 		10,
+// 		64,
+// 	)
 
-		utils.WriteJSON(
-			w,
-			http.StatusBadRequest,
-			shared.APIResponse{
-				Success: false,
-				Message: "invitation token is required",
-			},
-		)
+// 	if err != nil {
 
-		return
-	}
+// 		utils.WriteJSON(
+// 			w,
+// 			http.StatusBadRequest,
+// 			shared.APIResponse{
+// 				Success: false,
+// 				Message: "invalid invitation id",
+// 			},
+// 		)
 
-	// ----------------------------------------------------------
-	// Get Invitation
-	// ----------------------------------------------------------
+// 		return
+// 	}
 
-	invitation, err := GetInvitationByTokenService(
-		r.Context(),
-		token,
-	)
+// 	// ----------------------------------------------------------
+// 	// Get Authenticated User
+// 	// ----------------------------------------------------------
 
-	if err != nil {
+// 	userID := r.Context().
+// 		Value(middleware.UserIDKey).
+// 		(string)
 
-		switch err {
+// 	role := r.Context().
+// 		Value(middleware.RoleNameKey).
+// 		(string)
 
-		case shared.ErrInvitationNotFound:
+// 	// ----------------------------------------------------------
+// 	// Fetch Invitation
+// 	// ----------------------------------------------------------
 
-			utils.WriteJSON(
-				w,
-				http.StatusNotFound,
-				shared.APIResponse{
-					Success: false,
-					Message: "invitation not found",
-				},
-			)
+// 	invitation, err := GetInvitationByIDService(
+// 		r.Context(),
+// 		id,
+// 		userID,
+// 		role,
+// 	)
 
-			return
+// 	if err != nil {
 
-		case shared.ErrInvitationExpired:
+// 		switch err {
 
-			utils.WriteJSON(
-				w,
-				http.StatusBadRequest,
-				shared.APIResponse{
-					Success: false,
-					Message: "invitation has expired",
-				},
-			)
+// 		case shared.ErrInvitationNotFound:
 
-			return
+// 			utils.WriteJSON(
+// 				w,
+// 				http.StatusNotFound,
+// 				shared.APIResponse{
+// 					Success: false,
+// 					Message: "invitation not found",
+// 				},
+// 			)
 
-		case shared.ErrInvitationRevoked:
+// 			return
 
-			utils.WriteJSON(
-				w,
-				http.StatusBadRequest,
-				shared.APIResponse{
-					Success: false,
-					Message: "invitation has been revoked",
-				},
-			)
+// 		case shared.ErrForbidden:
 
-			return
-		}
+// 			utils.WriteJSON(
+// 				w,
+// 				http.StatusForbidden,
+// 				shared.APIResponse{
+// 					Success: false,
+// 					Message: "forbidden",
+// 				},
+// 			)
 
-		utils.WriteJSON(
-			w,
-			http.StatusInternalServerError,
-			shared.APIResponse{
-				Success: false,
-				Message: "failed to fetch invitation",
-			},
-		)
+// 			return
+// 		}
 
-		return
-	}
+// 		utils.WriteJSON(
+// 			w,
+// 			http.StatusInternalServerError,
+// 			shared.APIResponse{
+// 				Success: false,
+// 				Message: "failed to fetch invitation",
+// 			},
+// 		)
 
-	// ----------------------------------------------------------
-	// Success Response
-	// ----------------------------------------------------------
+// 		return
+// 	}
 
-	utils.WriteJSON(
-		w,
-		http.StatusOK,
-		shared.APIResponse{
-			Success: true,
-			Message: "invitation fetched successfully",
-			Data:    invitation,
-		},
-	)
-}
+// 	// ----------------------------------------------------------
+// 	// Success Response
+// 	// ----------------------------------------------------------
+
+// 	utils.WriteJSON(
+// 		w,
+// 		http.StatusOK,
+// 		shared.APIResponse{
+// 			Success: true,
+// 			Message: "invitation fetched successfully",
+// 			Data:    invitation,
+// 		},
+// 	)
+// }
+
+

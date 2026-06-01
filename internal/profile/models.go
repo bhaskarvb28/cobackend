@@ -5,6 +5,12 @@ import (
 	"time"
 )
 
+type ProfileResponse struct {
+	User    auth.UserResponse `json:"user"`
+	Profile interface{}       `json:"profile"`
+}
+
+// ----------------------------------------------------------------------------------------------------------
 
 type CreateProfileInput struct {
 	FirstName     string
@@ -15,11 +21,6 @@ type CreateProfileInput struct {
 	RoleID        string
 }
 
-
-type ProfileResponse struct {
-	User    auth.UserResponse `json:"user"`
-	Profile interface{}       `json:"profile"`
-}
 
 type StateAdminProfileResponse struct {
 	ProfileCompleted bool   `json:"profile_completed"`

@@ -112,6 +112,8 @@ func LoginHandler(
 	})
 }
 
+// ----------------------------------------------------------------------------------------------------------
+
 // func AcceptInviteHandler(
 // 	w http.ResponseWriter,
 // 	r *http.Request,

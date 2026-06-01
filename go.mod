@@ -13,6 +13,7 @@ require (
 require (
 	github.com/antihax/optional v1.0.0 // indirect
 	github.com/getbrevo/brevo-go v1.1.3 // indirect
+	github.com/go-chi/cors v1.2.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
 	github.com/jackc/pgconn v1.14.3 // indirect

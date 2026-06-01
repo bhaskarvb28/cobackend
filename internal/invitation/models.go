@@ -106,10 +106,70 @@ type Invitation struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+type InvitationPermissionCheck struct {
+	ID        int64
+	InvitedBy string
+	RoleCode  string
+	Status    string
+	ExpiresAt time.Time
+}
+
+type RoleResponse struct {
+	Key   string `json:"key"`
+	Label string `json:"label"`
+}
+
+type OrganizationResponse struct {
+	Type string `json:"type"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+type UserSummary struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
+// InvitationResponse represents
+// public invitation response data.
+type InvitationResponse struct {
+
+	ID int64 `json:"id"`
+
+	Email string `json:"email"`
+
+	Role RoleResponse `json:"role"`
+
+	RoleCode string `json:"role_code"`
+
+	Organization *OrganizationResponse `json:"organization,omitempty"`
+
+	ScopeType *string `json:"scope_type,omitempty"`
+
+	ScopeID *string `json:"scope_id,omitempty"`
+
+	Status string `json:"status"`
+
+	CreatedBy UserSummary `json:"created_by"`
+
+	InvitedBy string `json:"invited_by"`
+
+	ExpiresAt time.Time `json:"expires_at"`
+
+	AcceptedAt *time.Time `json:"accepted_at,omitempty"`
+
+	UsedBy *string `json:"used_by,omitempty"`
+
+	CreatedAt time.Time `json:"created_at"`
+}
+
 // CreateInvitationInput represents
 // the request body for creating
 // an invitation.
 type CreateInvitationInput struct {
+
+	// Name is the invited user's name.
+	Name string `json:"name"`
 
 	// Email is the invited user's email.
 	Email string `json:"email"`
@@ -134,36 +194,16 @@ type CreateInvitationInput struct {
 	ScopeID string `json:"scope_id"`
 }
 
-// InvitationResponse represents
-// public invitation response data.
-type InvitationResponse struct {
+//------------------------------------------------------------------------------------------------
+//BORDER
+//------------------------------------------------------------------------------------------------
 
-	// ID is the invitation ID.
-	ID int64 `json:"id"`
 
-	// Email is the invited email.
-	Email string `json:"email"`
 
-	// Role is the assigned role.
-	Role string `json:"role"`
 
-	// ScopeType is the assigned scope type.
-	ScopeType *string `json:"scope_type,omitempty"`
 
-	// ScopeID is the assigned scope ID.
-	ScopeID *string `json:"scope_id,omitempty"`
 
-	// Status is the invitation status.
-	Status string `json:"status"`
 
-	InvitedBy string `json:"invited_by"`
-
-	// ExpiresAt defines invitation expiry.
-	ExpiresAt time.Time `json:"expires_at"`
-
-	// CreatedAt stores creation timestamp.
-	CreatedAt time.Time `json:"created_at"`
-}
 
 // AcceptInvitationInput represents the request
 // body for accepting an invitation.

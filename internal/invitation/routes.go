@@ -74,30 +74,32 @@ func RegisterRoutes(r chi.Router) {
 				middleware.RequireCompletedProfile,
 			)
 
-
-			// Create a new invitation.
-			r.Post(
-				"/invite",
-				CreateInvitationHandler,
-			)
-
 			// Get all invitations.
 			r.Get(
 				"/",
 				GetInvitationsHandler,
 			)
 
-			// Get invitation by ID.
-			r.Get(
-				"/{id}",
-				GetInvitationByIDHandler,
+
+			// Create a new invitation.
+			r.Post(
+				"/invite",
+				CreateInviteHandler,
 			)
 
-			// Revoke invitation by ID.
-			r.Post(
-				"/{id}/revoke",
-				RevokeInvitationHandler,
+			r.Delete(
+				"/{id}",
+				DeleteInvitationHandler,
 			)
+
+			// Get invitation by ID.
+			// r.Get(
+			// 	"/{id}",
+			// 	GetInvitationByIDHandler,
+			// )
+
+			// Revoke invitation by ID.
+			
 		})
 	})
 }

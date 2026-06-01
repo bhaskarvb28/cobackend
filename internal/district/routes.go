@@ -1,9 +1,10 @@
-// package districts handles district-related routes and operations 
+// package districts handles district-related routes and operations
 package district
 
 import (
-	"github.com/go-chi/chi/v5"
 	"cobackend/internal/middleware"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func RegisterRoutes(r chi.Router) {
@@ -12,5 +13,12 @@ func RegisterRoutes(r chi.Router) {
 
 		// Get all districts
 		r.Get("/", GetDistrictsHandler)
+
+		// Get districts by state id
+		r.Get(
+			"/states/{state_id}",
+			GetDistrictsByStateIdHandler,
+		)
+
 	})
 }
