@@ -212,7 +212,7 @@ type PlayerProfileResponse struct {
 
 	Academy AcademySummary `json:"academy"`
 
-	CurrentCoachUserID *string `json:"current_coach_user_id,omitempty"`
+	CurrentCoachUserID *string `json:"current_coach_user_id"`
 
 	PersonalInfo *PlayerPersonalInfo `json:"personal_info,omitempty"`
 
