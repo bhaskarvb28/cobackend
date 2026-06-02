@@ -96,6 +96,9 @@ type AcademyAdminProfileResponse struct {
 
 	AcademyAddress string `json:"academy_address"`
 
+	PincodeID int    `json:"pincode_id"`
+	Pincode   string `json:"pincode"`
+
 	DistrictID int32 `json:"district_id"`
 
 	DistrictName string `json:"district_name"`

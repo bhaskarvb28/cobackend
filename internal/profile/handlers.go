@@ -6,6 +6,8 @@ import (
 	"cobackend/internal/middleware"
 	"cobackend/internal/shared"
 	"cobackend/internal/utils"
+
+	"fmt"
 )
 
 func GetProfileHandler(
@@ -45,6 +47,8 @@ func GetProfileHandler(
 	)
 
 	if err != nil {
+
+		fmt.Print(err)
 
 		utils.WriteJSON(
 			w,

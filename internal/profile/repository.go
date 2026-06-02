@@ -476,6 +476,7 @@ func GetDistrictCoachDisciplinesByUserID(
 }
 
 // Academy Admin
+// Academy Admin
 func GetAcademyAdminProfileByUserID(
 	ctx context.Context,
 	userID string,
@@ -492,6 +493,9 @@ func GetAcademyAdminProfileByUserID(
 			a.name,
 			a.address,
 
+			p.id,
+			p.code,
+
 			d.id,
 			d.name,
 
@@ -503,8 +507,11 @@ func GetAcademyAdminProfileByUserID(
 		INNER JOIN academies a
 			ON a.id = aa.academy_id
 
+		INNER JOIN pincodes p
+			ON p.id = a.pincode_id
+
 		INNER JOIN districts d
-			ON d.id = a.district_id
+			ON d.id = p.district_id
 
 		INNER JOIN states s
 			ON s.id = d.state_id
@@ -527,6 +534,9 @@ func GetAcademyAdminProfileByUserID(
 		&profile.AcademyID,
 		&profile.AcademyName,
 		&profile.AcademyAddress,
+
+		&profile.PincodeID,
+		&profile.Pincode,
 
 		&profile.DistrictID,
 		&profile.DistrictName,
