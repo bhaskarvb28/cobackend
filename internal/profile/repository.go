@@ -9,6 +9,8 @@ import (
 	"cobackend/internal/db"
 	"cobackend/internal/shared"
 
+	"cobackend/internal/utils"
+
 	"github.com/jackc/pgx/v5"
 )
 
@@ -732,7 +734,6 @@ func GetPlayerProfileByUserID(
 			p.dpdp_consent,
 			p.status,
 			p.joined_at,
-			p.current_coach_user_id,
 
 			a.id,
 			a.name,
@@ -742,7 +743,12 @@ func GetPlayerProfileByUserID(
 			pn.code,
 
 			d.name,
-			s.name
+			s.name,
+
+			cu.id,
+			cu.first_name,
+			cu.last_name,
+			ac.coach_code
 
 		FROM players p
 
@@ -758,12 +764,25 @@ func GetPlayerProfileByUserID(
 		INNER JOIN states s
 			ON s.id = d.state_id
 
+		LEFT JOIN academy_coaches ac
+			ON ac.user_id = p.current_coach_user_id
+
+		LEFT JOIN users cu
+			ON cu.id = ac.user_id
+
 		WHERE p.user_id = $1
 	`
 
 	var profile PlayerProfileResponse
 
 	profile.Academy = AcademySummary{}
+
+	var (
+		coachID        *string
+		coachFirstName *string
+		coachLastName  *string
+		coachCode      *string
+	)
 
 	err := db.DB.QueryRow(
 		ctx,
@@ -774,7 +793,6 @@ func GetPlayerProfileByUserID(
 		&profile.DPDPConsent,
 		&profile.Status,
 		&profile.JoinedAt,
-		&profile.CurrentCoachUserID,
 
 		&profile.Academy.ID,
 		&profile.Academy.Name,
@@ -785,6 +803,11 @@ func GetPlayerProfileByUserID(
 
 		&profile.Academy.District,
 		&profile.Academy.State,
+
+		&coachID,
+		&coachFirstName,
+		&coachLastName,
+		&coachCode,
 	)
 
 	if err != nil {
@@ -795,6 +818,27 @@ func GetPlayerProfileByUserID(
 		}
 
 		return PlayerProfileResponse{}, err
+	}
+
+	// ----------------------------------------------------------
+	// Current Coach
+	// ----------------------------------------------------------
+
+	if coachID != nil {
+
+		fullName := strings.TrimSpace(
+			utils.DerefString(coachFirstName) +
+				" " +
+				utils.DerefString(coachLastName),
+		)
+
+		profile.CurrentCoach = &CoachSummary{
+			UserID: *coachID,
+
+			FullName: fullName,
+
+			CoachCode: utils.DerefString(coachCode),
+		}
 	}
 
 	// ----------------------------------------------------------

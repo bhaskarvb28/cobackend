@@ -201,6 +201,14 @@ type PlayerPassport struct {
 	PassportPlaceOfIssue *string `json:"passport_place_of_issue,omitempty"`
 }
 
+type CoachSummary struct {
+	UserID string `json:"user_id"`
+
+	FullName string `json:"full_name"`
+
+	CoachCode string `json:"coach_code"`
+}
+
 type PlayerProfileResponse struct {
 	ProfileCompleted bool `json:"profile_completed"`
 
@@ -212,8 +220,8 @@ type PlayerProfileResponse struct {
 
 	Academy AcademySummary `json:"academy"`
 
-	CurrentCoachUserID *string `json:"current_coach_user_id"`
-
+	CurrentCoach *CoachSummary `json:"current_coach"`
+	
 	PersonalInfo *PlayerPersonalInfo `json:"personal_info,omitempty"`
 
 	SportsProfile *PlayerSportsProfile `json:"sports_profile,omitempty"`
