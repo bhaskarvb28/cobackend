@@ -3,6 +3,7 @@ package main
 import (
 	"cobackend/internal/academy"
 	"cobackend/internal/disciplines"
+	"cobackend/internal/pincode"
 	"cobackend/internal/role"
 	session "cobackend/internal/sessions"
 
@@ -91,6 +92,8 @@ func main() {
 
 		player.RegisterRoutes(r)
 		session.RegisterRoutes(r)
+
+		pincode.RegisterRoutes(r)
 
 
 		// stateAdmin.RegisterRoutes(r)
