@@ -578,6 +578,9 @@ func GetAcademyCoachProfileByUserID(
 			a.name,
 			a.address,
 
+			p.id,
+			p.code,
+
 			d.id,
 			d.name,
 
@@ -589,8 +592,11 @@ func GetAcademyCoachProfileByUserID(
 		INNER JOIN academies a
 			ON a.id = ac.academy_id
 
+		INNER JOIN pincodes p
+			ON p.id = a.pincode_id
+
 		INNER JOIN districts d
-			ON d.id = a.district_id
+			ON d.id = p.district_id
 
 		INNER JOIN states s
 			ON s.id = d.state_id
@@ -613,6 +619,9 @@ func GetAcademyCoachProfileByUserID(
 		&profile.AcademyID,
 		&profile.AcademyName,
 		&profile.AcademyAddress,
+
+		&profile.PincodeID,
+		&profile.Pincode,
 
 		&profile.DistrictID,
 		&profile.DistrictName,

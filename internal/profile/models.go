@@ -127,6 +127,9 @@ type AcademyCoachProfileResponse struct {
 
 	DistrictName string `json:"district_name"`
 
+	PincodeID int    `json:"pincode_id"`
+	Pincode   string `json:"pincode"`
+
 	StateID int16 `json:"state_id"`
 
 	StateName string `json:"state_name"`
