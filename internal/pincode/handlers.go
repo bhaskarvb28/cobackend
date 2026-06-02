@@ -3,6 +3,7 @@ package pincode
 import (
 	"cobackend/internal/shared"
 	"cobackend/internal/utils"
+	"fmt"
 	"net/http"
 )
 
@@ -19,6 +20,10 @@ func GetPincodesHandler(w http.ResponseWriter, r *http.Request) {
 				Message: "failed to fetch pincodes",
 			},
 		)
+
+		fmt.Print(err)
+
+		return
 	}
 
 	utils.WriteJSON(
