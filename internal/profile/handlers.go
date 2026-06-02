@@ -124,6 +124,7 @@ func CompleteProfileHandler(
 			shared.APIResponse{
 				Success: false,
 				Message: "failed to complete profile",
+				Data: err,
 			},
 		)
 
