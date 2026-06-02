@@ -61,6 +61,9 @@ type AcademySummary struct {
 
 	Address string `json:"address"`
 
+	PincodeID int32  `json:"pincode_id"`
+	Pincode   string `json:"pincode"`
+
 	District string `json:"district"`
 
 	State string `json:"state"`

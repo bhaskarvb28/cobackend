@@ -738,6 +738,9 @@ func GetPlayerProfileByUserID(
 			a.name,
 			a.address,
 
+			pn.id,
+			pn.code,
+
 			d.name,
 			s.name
 
@@ -746,8 +749,11 @@ func GetPlayerProfileByUserID(
 		INNER JOIN academies a
 			ON a.id = p.academy_id
 
+		INNER JOIN pincodes pn
+			ON pn.id = a.pincode_id
+
 		INNER JOIN districts d
-			ON d.id = a.district_id
+			ON d.id = pn.district_id
 
 		INNER JOIN states s
 			ON s.id = d.state_id
@@ -773,6 +779,9 @@ func GetPlayerProfileByUserID(
 		&profile.Academy.ID,
 		&profile.Academy.Name,
 		&profile.Academy.Address,
+
+		&profile.Academy.PincodeID,
+		&profile.Academy.Pincode,
 
 		&profile.Academy.District,
 		&profile.Academy.State,
