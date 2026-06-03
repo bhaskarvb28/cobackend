@@ -43,90 +43,145 @@ func GetAcademyAdminsRepository(
 	offset := 0
 
 	if query.Limit > 0 {
+
 		offset = (query.Page - 1) * query.Limit
 	}
 
 	baseQuery := `
 	SELECT
-		p.id,
-		p.first_name,
-		p.last_name,
-		p.email,
-		p.contact_number,
-		d.state_id,
-		a.district_id,
+		u.id,
+		u.first_name,
+		u.last_name,
+		u.email,
+		u.contact_number,
+
+		s.id,
+		d.id,
+
 		aa.academy_id,
+
 		aa.gstin,
 		aa.registration_proof,
 		aa.dpdp_consent,
+
 		aa.created_at::text
-	FROM profiles p
+
+	FROM users u
+
 	INNER JOIN academy_admins aa
-		ON p.id = aa.profile_id
+		ON aa.user_id = u.id
+
 	INNER JOIN academies a
 		ON aa.academy_id = a.id
+
+	INNER JOIN pincodes pc
+		ON pc.id = a.pincode_id
+
 	INNER JOIN districts d
-		ON a.district_id = d.id
+		ON d.id = pc.district_id
+
+	INNER JOIN states s
+		ON s.id = d.state_id
+
 	WHERE 1=1
 	`
 
 	countQuery := `
 	SELECT COUNT(*)
-	FROM profiles p
+
+	FROM users u
+
 	INNER JOIN academy_admins aa
-		ON p.id = aa.profile_id
+		ON aa.user_id = u.id
+
 	INNER JOIN academies a
 		ON aa.academy_id = a.id
+
+	INNER JOIN pincodes pc
+		ON pc.id = a.pincode_id
+
 	INNER JOIN districts d
-		ON a.district_id = d.id
+		ON d.id = pc.district_id
+
+	INNER JOIN states s
+		ON s.id = d.state_id
+
 	WHERE 1=1
 	`
 
 	args := []interface{}{}
 	argPos := 1
 
+	// ----------------------------------------------------------
+	// Search
+	// ----------------------------------------------------------
+
 	if query.Search != "" {
 
 		searchCondition := `
 		AND (
-			p.first_name ILIKE $` + strconv.Itoa(argPos) + `
-			OR p.last_name ILIKE $` + strconv.Itoa(argPos) + `
-			OR p.email ILIKE $` + strconv.Itoa(argPos) + `
+			u.first_name ILIKE $` + strconv.Itoa(argPos) + `
+			OR u.last_name ILIKE $` + strconv.Itoa(argPos) + `
+			OR u.email ILIKE $` + strconv.Itoa(argPos) + `
 		)
 		`
 
 		baseQuery += searchCondition
 		countQuery += searchCondition
 
-		args = append(args, "%"+query.Search+"%")
+		args = append(
+			args,
+			"%"+query.Search+"%",
+		)
+
 		argPos++
 	}
+
+	// ----------------------------------------------------------
+	// State Filter
+	// ----------------------------------------------------------
 
 	if query.StateID != 0 {
 
 		condition := `
-		AND d.state_id = $` + strconv.Itoa(argPos)
+		AND s.id = $` + strconv.Itoa(argPos)
 
 		baseQuery += condition
 		countQuery += condition
 
-		args = append(args, query.StateID)
+		args = append(
+			args,
+			query.StateID,
+		)
+
 		argPos++
 	}
+
+	// ----------------------------------------------------------
+	// District Filter
+	// ----------------------------------------------------------
 
 	if query.DistrictID != 0 {
 
 		condition := `
-		AND a.district_id = $` + strconv.Itoa(argPos)
+		AND d.id = $` + strconv.Itoa(argPos)
 
 		baseQuery += condition
 		countQuery += condition
 
-		args = append(args, query.DistrictID)
+		args = append(
+			args,
+			query.DistrictID,
+		)
+
 		argPos++
 	}
 
-	if query.AcademyID != 0 {
+	// ----------------------------------------------------------
+	// Academy Filter
+	// ----------------------------------------------------------
+
+	if query.AcademyID != "" {
 
 		condition := `
 		AND aa.academy_id = $` + strconv.Itoa(argPos)
@@ -134,9 +189,17 @@ func GetAcademyAdminsRepository(
 		baseQuery += condition
 		countQuery += condition
 
-		args = append(args, query.AcademyID)
+		args = append(
+			args,
+			query.AcademyID,
+		)
+
 		argPos++
 	}
+
+	// ----------------------------------------------------------
+	// Total Count
+	// ----------------------------------------------------------
 
 	var total int
 
@@ -147,13 +210,25 @@ func GetAcademyAdminsRepository(
 	).Scan(&total)
 
 	if err != nil {
+
 		return PaginatedAcademyAdmins{}, err
 	}
 
-	sortColumn := AllowedAcademyAdminSortFields[query.SortBy]
+	// ----------------------------------------------------------
+	// Sorting
+	// ----------------------------------------------------------
+
+	sortColumn :=
+		AllowedAcademyAdminSortFields[
+			query.SortBy,
+		]
 
 	baseQuery += `
 	ORDER BY ` + sortColumn + ` ` + query.OrderBy
+
+	// ----------------------------------------------------------
+	// Pagination
+	// ----------------------------------------------------------
 
 	if query.Limit > 0 {
 
@@ -161,7 +236,11 @@ func GetAcademyAdminsRepository(
 		LIMIT $` + strconv.Itoa(argPos) + `
 		OFFSET $` + strconv.Itoa(argPos+1)
 
-		args = append(args, query.Limit, offset)
+		args = append(
+			args,
+			query.Limit,
+			offset,
+		)
 	}
 
 	rows, err := db.DB.Query(
@@ -171,6 +250,7 @@ func GetAcademyAdminsRepository(
 	)
 
 	if err != nil {
+
 		return PaginatedAcademyAdmins{}, err
 	}
 
@@ -180,31 +260,40 @@ func GetAcademyAdminsRepository(
 
 	for rows.Next() {
 
-		var a AcademyAdmin
+		var academyAdmin AcademyAdmin
 
 		err := rows.Scan(
-			&a.ID,
-			&a.FirstName,
-			&a.LastName,
-			&a.Email,
-			&a.ContactNumber,
-			&a.StateID,
-			&a.DistrictID,
-			&a.AcademyID,
-			&a.GSTIN,
-			&a.RegistrationProof,
-			&a.DPDPConsent,
-			&a.CreatedAt,
+			&academyAdmin.ID,
+			&academyAdmin.FirstName,
+			&academyAdmin.LastName,
+			&academyAdmin.Email,
+			&academyAdmin.ContactNumber,
+
+			&academyAdmin.StateID,
+			&academyAdmin.DistrictID,
+
+			&academyAdmin.AcademyID,
+
+			&academyAdmin.GSTIN,
+			&academyAdmin.RegistrationProof,
+			&academyAdmin.DPDPConsent,
+
+			&academyAdmin.CreatedAt,
 		)
 
 		if err != nil {
+
 			return PaginatedAcademyAdmins{}, err
 		}
 
-		admins = append(admins, a)
+		admins = append(
+			admins,
+			academyAdmin,
+		)
 	}
 
 	if err := rows.Err(); err != nil {
+
 		return PaginatedAcademyAdmins{}, err
 	}
 
@@ -212,9 +301,12 @@ func GetAcademyAdminsRepository(
 
 	if query.Limit > 0 {
 
-		totalPages = int(math.Ceil(
-			float64(total) / float64(query.Limit),
-		))
+		totalPages = int(
+			math.Ceil(
+				float64(total) /
+					float64(query.Limit),
+			),
+		)
 	}
 
 	return PaginatedAcademyAdmins{
@@ -230,50 +322,74 @@ func GetAcademyAdminsRepository(
 
 func GetAcademyAdminByIDRepository(
 	ctx context.Context,
-	profileID string,
+	userID string,
 ) (AcademyAdmin, error) {
 
-	var a AcademyAdmin
+	var academyAdmin AcademyAdmin
 
 	err := db.DB.QueryRow(
 		ctx,
 		`
 		SELECT
-			p.id,
-			p.first_name,
-			p.last_name,
-			p.email,
-			p.contact_number,
-			aa.state_id,
-			aa.district_id,
+			u.id,
+			u.first_name,
+			u.last_name,
+			u.email,
+			u.contact_number,
+
+			s.id,
+			d.id,
+
 			aa.academy_id,
+
 			aa.gstin,
 			aa.registration_proof,
 			aa.dpdp_consent,
+
 			aa.created_at::text
-		FROM profiles p
+
+		FROM users u
+
 		INNER JOIN academy_admins aa
-			ON p.id = aa.profile_id
-		WHERE p.id = $1
+			ON aa.user_id = u.id
+
+		INNER JOIN academies a
+			ON a.id = aa.academy_id
+
+		INNER JOIN pincodes pc
+			ON pc.id = a.pincode_id
+
+		INNER JOIN districts d
+			ON d.id = pc.district_id
+
+		INNER JOIN states s
+			ON s.id = d.state_id
+
+		WHERE u.id = $1
 		`,
-		profileID,
+		userID,
 	).Scan(
-		&a.ID,
-		&a.FirstName,
-		&a.LastName,
-		&a.Email,
-		&a.ContactNumber,
-		&a.StateID,
-		&a.DistrictID,
-		&a.AcademyID,
-		&a.GSTIN,
-		&a.RegistrationProof,
-		&a.DPDPConsent,
-		&a.CreatedAt,
+		&academyAdmin.ID,
+		&academyAdmin.FirstName,
+		&academyAdmin.LastName,
+		&academyAdmin.Email,
+		&academyAdmin.ContactNumber,
+
+		&academyAdmin.StateID,
+		&academyAdmin.DistrictID,
+
+		&academyAdmin.AcademyID,
+
+		&academyAdmin.GSTIN,
+		&academyAdmin.RegistrationProof,
+		&academyAdmin.DPDPConsent,
+
+		&academyAdmin.CreatedAt,
 	)
 
-	return a, err
+	return academyAdmin, err
 }
+
 
 func CheckAcademyAdminExists(
 	ctx context.Context,

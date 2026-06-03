@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"cobackend/internal/middleware"
+	"cobackend/internal/player"
 	"cobackend/internal/shared"
 	"cobackend/internal/utils"
 
@@ -315,6 +316,321 @@ func GetAcademiesHandler(
 		shared.APIResponse{
 			Success: true,
 			Message: "academies fetched successfully",
+			Data:    result,
+		},
+	)
+}
+
+func GetAcademyPlayersHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	// ----------------------------------------------------------
+	// Parse Query Parameters
+	// ----------------------------------------------------------
+
+	pageStr := r.URL.Query().Get("page")
+	limitStr := r.URL.Query().Get("limit")
+
+	search := strings.TrimSpace(
+		r.URL.Query().Get("search"),
+	)
+
+	disciplineStr := r.URL.Query().Get(
+		"discipline_id",
+	)
+
+	status := strings.TrimSpace(
+		r.URL.Query().Get("status"),
+	)
+
+	coachAssignedStr := strings.TrimSpace(
+		r.URL.Query().Get("coach_assigned"),
+	)
+
+	sortBy := r.URL.Query().Get("sort_by")
+	orderBy := r.URL.Query().Get("order_by")
+
+	// ----------------------------------------------------------
+	// Parse Discipline
+	// ----------------------------------------------------------
+
+	disciplineID := 0
+
+	if disciplineStr != "" {
+
+		parsed, err := strconv.Atoi(
+			disciplineStr,
+		)
+
+		if err != nil {
+
+			utils.WriteJSON(
+				w,
+				http.StatusBadRequest,
+				shared.APIResponse{
+					Success: false,
+					Message: "invalid discipline_id",
+				},
+			)
+
+			return
+		}
+
+		disciplineID = parsed
+	}
+
+	// ----------------------------------------------------------
+	// Parse Coach Assigned
+	// ----------------------------------------------------------
+
+	var coachAssigned *bool
+
+	if coachAssignedStr != "" {
+
+		parsed, err := strconv.ParseBool(
+			coachAssignedStr,
+		)
+
+		if err != nil {
+
+			utils.WriteJSON(
+				w,
+				http.StatusBadRequest,
+				shared.APIResponse{
+					Success: false,
+					Message: "invalid coach_assigned",
+				},
+			)
+
+			return
+		}
+
+		coachAssigned = &parsed
+	}
+
+	// ----------------------------------------------------------
+	// Pagination
+	// ----------------------------------------------------------
+
+	page := 1
+
+	if pageStr != "" {
+
+		parsed, err := strconv.Atoi(pageStr)
+
+		if err != nil || parsed < 1 {
+
+			utils.WriteJSON(
+				w,
+				http.StatusBadRequest,
+				shared.APIResponse{
+					Success: false,
+					Message: "invalid page",
+				},
+			)
+
+			return
+		}
+
+		page = parsed
+	}
+
+	limit := 10
+
+	if limitStr != "" {
+
+		if limitStr == "all" {
+
+			limit = 0
+
+		} else {
+
+			parsed, err := strconv.Atoi(limitStr)
+
+			if err != nil || parsed < 1 {
+
+				utils.WriteJSON(
+					w,
+					http.StatusBadRequest,
+					shared.APIResponse{
+						Success: false,
+						Message: "invalid limit",
+					},
+				)
+
+				return
+			}
+
+			limit = parsed
+		}
+	}
+
+	// ----------------------------------------------------------
+	// Sorting
+	// ----------------------------------------------------------
+
+	if sortBy == "" {
+		sortBy = "created_at"
+	}
+
+	if orderBy == "" {
+		orderBy = "desc"
+	}
+
+	_, exists := AllowedAcademyPlayerSortFields[
+		sortBy,
+	]
+
+	if !exists {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "invalid sort_by field",
+			},
+		)
+
+		return
+	}
+
+	orderBy = strings.ToUpper(orderBy)
+
+	if orderBy != "ASC" && orderBy != "DESC" {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "invalid order_by value",
+			},
+		)
+
+		return
+	}
+
+	// ----------------------------------------------------------
+	// Build Query
+	// ----------------------------------------------------------
+
+	query := player.GetAcademyPlayersQuery{
+		Page:          page,
+		Limit:         limit,
+		Search:        search,
+		DisciplineID:  disciplineID,
+		CoachAssigned: coachAssigned,
+		Status:        status,
+		SortBy:        sortBy,
+		OrderBy:       orderBy,
+	}
+
+	// ----------------------------------------------------------
+	// Get Auth User
+	// ----------------------------------------------------------
+
+	authUserID := r.Context().
+		Value(middleware.UserIDKey).
+		( string )
+
+	// ----------------------------------------------------------
+	// Execute Service
+	// ----------------------------------------------------------
+
+	result, err := GetAcademyPlayersService(
+		r.Context(),
+		authUserID,
+		query,
+	)
+
+	if err != nil {
+
+		utils.WriteJSON(
+			w,
+			http.StatusInternalServerError,
+			shared.APIResponse{
+				Success: false,
+				Message: err.Error(),
+			},
+		)
+
+		fmt.Print(err)
+		
+		return
+	}
+
+	// ----------------------------------------------------------
+	// Success Response
+	// ----------------------------------------------------------
+
+	utils.WriteJSON(
+		w,
+		http.StatusOK,
+		shared.APIResponse{
+			Success: true,
+			Message: "players fetched successfully",
+			Data:    result,
+		},
+	)
+}
+
+func GetAcademyPlayerHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	playerID := chi.URLParam(
+		r,
+		"playerID",
+	)
+
+	if playerID == "" {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "playerID is required",
+			},
+		)
+
+		return
+	}
+
+	authUserID := r.Context().
+		Value(middleware.UserIDKey).
+		( string )
+
+	result, err := GetAcademyPlayerService(
+		r.Context(),
+		authUserID,
+		playerID,
+	)
+
+	if err != nil {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: err.Error(),
+			},
+		)
+
+		return
+	}
+
+	utils.WriteJSON(
+		w,
+		http.StatusOK,
+		shared.APIResponse{
+			Success: true,
+			Message: "player fetched successfully",
 			Data:    result,
 		},
 	)

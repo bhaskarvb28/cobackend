@@ -78,6 +78,9 @@ var (
 	// Profiles
 	ErrProfileNotFound = errors.New("profile not found")
 
+	// Players
+	ErrPlayerIDRequired = errors.New("player id is required")
+
 
 	// ----------------------------------------------------------
 

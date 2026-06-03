@@ -6,6 +6,8 @@ import (
 
 	"cobackend/internal/academyAdmin"
 	"cobackend/internal/districtAdmin"
+	"cobackend/internal/player"
+	"cobackend/internal/profile"
 	"cobackend/internal/shared"
 )
 
@@ -101,7 +103,110 @@ func GetDistrictAdminAcademiesService(
 	)
 }
 
+func GetAcademyPlayersService(
+	ctx context.Context,
+	userID string,
+	query player.GetAcademyPlayersQuery,
+) (player.PaginatedPlayers, error) {
 
+	// ----------------------------------------------------------
+	// Normalize Input
+	// ----------------------------------------------------------
+
+	query.Search = strings.TrimSpace(
+		query.Search,
+	)
+
+	query.Status = strings.TrimSpace(
+		query.Status,
+	)
+
+	// ----------------------------------------------------------
+	// Get Academy Admin
+	// ----------------------------------------------------------
+
+	academyAdminProfile, err :=
+		academyAdmin.GetAcademyAdminByIDRepository(
+			ctx,
+			userID,
+		)
+
+	if err != nil {
+
+		return player.PaginatedPlayers{},
+			err
+	}
+
+	// ----------------------------------------------------------
+	// Fetch Players
+	// ----------------------------------------------------------
+
+	return player.GetAcademyPlayersRepository(
+		ctx,
+		academyAdminProfile.AcademyID,
+		query,
+	)
+}
+
+func GetAcademyPlayerService(
+	ctx context.Context,
+	userID string,
+	playerID string,
+) (profile.PlayerProfileResponse, error) {
+
+	// ----------------------------------------------------------
+	// Normalize Input
+	// ----------------------------------------------------------
+
+	playerID = strings.TrimSpace(
+		playerID,
+	)
+
+	// ----------------------------------------------------------
+	// Validate Input
+	// ----------------------------------------------------------
+
+	if playerID == "" {
+
+		return profile.PlayerProfileResponse{},
+			shared.ErrPlayerIDRequired
+	}
+
+	// ----------------------------------------------------------
+	// Get Academy Admin
+	// ----------------------------------------------------------
+
+	academyAdminProfile, err :=
+		academyAdmin.GetAcademyAdminByIDRepository(
+			ctx,
+			userID,
+		)
+
+	if err != nil {
+
+		return profile.PlayerProfileResponse{},
+			err
+	}
+
+	// ----------------------------------------------------------
+	// Fetch Player
+	// ----------------------------------------------------------
+
+	playerProfile, err :=
+		player.GetAcademyPlayerRepository(
+			ctx,
+			academyAdminProfile.AcademyID,
+			playerID,
+		)
+
+	if err != nil {
+
+		return profile.PlayerProfileResponse{},
+			err
+	}
+
+	return playerProfile, nil
+}
 
 func CreateAcademyBuildingService(
 	ctx context.Context,

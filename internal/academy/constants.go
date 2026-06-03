@@ -12,3 +12,10 @@ var AllowedAcademySortFields = map[string]string{
 	"created_at":  "a.created_at",
 	"updated_at":  "a.updated_at",
 }
+
+var AllowedAcademyPlayerSortFields = map[string]bool{
+	"created_at": true,
+	"updated_at": true,
+	"first_name": true,
+	"status":     true,
+}

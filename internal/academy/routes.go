@@ -70,6 +70,26 @@ func RegisterRoutes(r chi.Router) {
 		})
 
 		// --------------------------------------------------
+		// Player Management Routes
+		// --------------------------------------------------
+
+		r.Route("/players", func(r chi.Router) {
+
+			r.Use(middleware.RequireRole(
+				"academy_admin",
+			))
+
+			r.Get(
+				"/",
+				GetAcademyPlayersHandler,
+			)
+
+			r.Get(
+				"/{playerID}",
+				GetAcademyPlayerHandler,
+			)
+		})
+		// --------------------------------------------------
 		// Building Routes
 		// --------------------------------------------------
 
@@ -128,5 +148,7 @@ func RegisterRoutes(r chi.Router) {
 				)
 			})
 		})
+
+		
 	})
 }
