@@ -49,6 +49,8 @@ type PlayerListItemResponse struct {
 
 	Status string `json:"status"`
 
+	ProfileCompleted bool `json:"profile_completed"`
+
 	Gender string `json:"gender"`
 
 	PrimaryDiscipline *profile.Discipline `json:"primary_discipline,omitempty"`
