@@ -139,6 +139,11 @@ func GetAcademyCoaches(
 		u.first_name,
 		u.last_name,
 
+		COALESCE(
+			ac.coach_code,
+			''
+		),
+
 		COUNT(p.user_id) AS assigned_players_count
 
 	FROM academy_coaches ac
@@ -201,7 +206,8 @@ func GetAcademyCoaches(
 	GROUP BY
 		u.id,
 		u.first_name,
-		u.last_name
+		u.last_name,
+		ac.coach_code
 	`
 
 	baseQuery += `
@@ -255,7 +261,10 @@ func GetAcademyCoaches(
 
 	for rows.Next() {
 
-		var item CoachSummary
+		var item = CoachSummary{
+			Disciplines:
+				[]DisciplineSummary{},
+		}
 
 		var firstName string
 		var lastName string
@@ -264,6 +273,7 @@ func GetAcademyCoaches(
 			&item.UserID,
 			&firstName,
 			&lastName,
+			&item.CoachCode,
 			&item.AssignedPlayersCount,
 		)
 
@@ -275,6 +285,25 @@ func GetAcademyCoaches(
 
 		item.FullName =
 			firstName + " " + lastName
+
+		// ------------------------------------------------------
+		// Coach Disciplines
+		// ------------------------------------------------------
+
+		disciplines, err :=
+			GetCoachDisciplines(
+				ctx,
+				item.UserID,
+			)
+
+		if err != nil {
+
+			return PaginatedAcademyCoachesResponse{},
+				err
+		}
+
+		item.Disciplines =
+			disciplines
 
 		items = append(
 			items,
@@ -344,10 +373,6 @@ func GetAcademyCoach(
 
 	var response AcademyCoachProfileResponse
 
-	// ----------------------------------------------------------
-	// Coach Basic Info
-	// ----------------------------------------------------------
-
 	err := db.DB.QueryRow(
 		ctx,
 		`
@@ -357,7 +382,10 @@ func GetAcademyCoach(
 			u.last_name,
 			u.email,
 
-			ac.coach_code,
+			COALESCE(
+				ac.coach_code,
+				''
+			),
 
 			ac.created_at,
 
@@ -405,9 +433,31 @@ func GetAcademyCoach(
 			" " +
 			response.LastName
 
-	// ----------------------------------------------------------
-	// Disciplines
-	// ----------------------------------------------------------
+	disciplines, err :=
+		GetCoachDisciplines(
+			ctx,
+			coachUserID,
+		)
+
+	if err != nil {
+
+		return AcademyCoachProfileResponse{},
+			err
+	}
+
+	response.Disciplines =
+		disciplines
+
+	return response, nil
+}
+
+func GetCoachDisciplines(
+	ctx context.Context,
+	coachUserID string,
+) (
+	[]DisciplineSummary,
+	error,
+) {
 
 	rows, err := db.DB.Query(
 		ctx,
@@ -423,19 +473,20 @@ func GetAcademyCoach(
 			ON d.id = acd.discipline_id
 
 		WHERE acd.coach_user_id = $1
+
+		ORDER BY d.display_name ASC
 		`,
 		coachUserID,
 	)
 
 	if err != nil {
-
-		return AcademyCoachProfileResponse{},
-			err
+		return nil, err
 	}
 
 	defer rows.Close()
 
-	disciplines := []DisciplineSummary{}
+	disciplines :=
+		[]DisciplineSummary{}
 
 	for rows.Next() {
 
@@ -448,9 +499,7 @@ func GetAcademyCoach(
 		)
 
 		if err != nil {
-
-			return AcademyCoachProfileResponse{},
-				err
+			return nil, err
 		}
 
 		disciplines = append(
@@ -459,8 +508,5 @@ func GetAcademyCoach(
 		)
 	}
 
-	response.Disciplines =
-		disciplines
-
-	return response, nil
+	return disciplines, nil
 }
