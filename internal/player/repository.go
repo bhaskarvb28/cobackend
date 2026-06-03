@@ -2,6 +2,7 @@ package player
 
 import (
 	"context"
+	"errors"
 	"math"
 	"strconv"
 	"strings"
@@ -491,6 +492,133 @@ func GetAcademyPlayerRepository(
 	return playerProfile, nil
 }
 
+func ValidateAcademyPlayer(
+	ctx context.Context,
+	academyID string,
+	playerID string,
+) (
+	bool,
+	error,
+) {
+
+	var exists bool
+
+	err := db.DB.QueryRow(
+		ctx,
+		`
+		SELECT EXISTS(
+			SELECT 1
+			FROM players
+			WHERE academy_id = $1
+			AND user_id = $2
+		)
+		`,
+		academyID,
+		playerID,
+	).Scan(&exists)
+
+	if err != nil {
+		return false, err
+	}
+
+	return exists, nil
+}
+
+func CheckPlayerCoachAssignment(
+	ctx context.Context,
+	playerID string,
+	coachUserID string,
+) (
+	bool,
+	error,
+) {
+
+	var exists bool
+
+	err := db.DB.QueryRow(
+		ctx,
+		`
+		SELECT EXISTS(
+			SELECT 1
+			FROM players
+			WHERE user_id = $1
+			AND current_coach_user_id = $2
+		)
+		`,
+		playerID,
+		coachUserID,
+	).Scan(&exists)
+
+	if err != nil {
+		return false, err
+	}
+
+	return exists, nil
+}
+
+func AssignCoach(
+	ctx context.Context,
+	playerID string,
+	coachUserID string,
+) error {
+
+	commandTag, err := db.DB.Exec(
+		ctx,
+		`
+		UPDATE players
+		SET
+			current_coach_user_id = $1,
+			updated_at = NOW()
+		WHERE user_id = $2
+		`,
+		coachUserID,
+		playerID,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	if commandTag.RowsAffected() == 0 {
+
+		return errors.New(
+			"player not found",
+		)
+	}
+
+	return nil
+}
+
+func RemoveCoach(
+	ctx context.Context,
+	playerID string,
+) error {
+
+	commandTag, err := db.DB.Exec(
+		ctx,
+		`
+		UPDATE players
+		SET
+			current_coach_user_id = NULL,
+			updated_at = NOW()
+		WHERE user_id = $1
+		`,
+		playerID,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	if commandTag.RowsAffected() == 0 {
+
+		return errors.New(
+			"player not found",
+		)
+	}
+
+	return nil
+}
 
 func GetAvailableShootingEventsRepository(
 	ctx context.Context,

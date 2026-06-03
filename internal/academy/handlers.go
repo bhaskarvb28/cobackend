@@ -8,6 +8,7 @@ import (
 	"cobackend/internal/player"
 	"cobackend/internal/shared"
 	"cobackend/internal/utils"
+	"cobackend/internal/academyCoach"
 
 	"github.com/go-chi/chi/v5"
 
@@ -558,7 +559,7 @@ func GetAcademyPlayersHandler(
 		)
 
 		fmt.Print(err)
-		
+
 		return
 	}
 
@@ -632,6 +633,468 @@ func GetAcademyPlayerHandler(
 			Success: true,
 			Message: "player fetched successfully",
 			Data:    result,
+		},
+	)
+}
+
+func GetAcademyCoachesHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	// ----------------------------------------------------------
+	// Parse Query Parameters
+	// ----------------------------------------------------------
+
+	pageStr := r.URL.Query().Get("page")
+	limitStr := r.URL.Query().Get("limit")
+
+	search := strings.TrimSpace(
+		r.URL.Query().Get("search"),
+	)
+
+	disciplineStr := r.URL.Query().Get(
+		"discipline_id",
+	)
+
+	sortBy := r.URL.Query().Get("sort_by")
+	orderBy := r.URL.Query().Get("order_by")
+
+	// ----------------------------------------------------------
+	// Parse Discipline
+	// ----------------------------------------------------------
+
+	disciplineID := 0
+
+	if disciplineStr != "" {
+
+		parsed, err := strconv.Atoi(
+			disciplineStr,
+		)
+
+		if err != nil {
+
+			utils.WriteJSON(
+				w,
+				http.StatusBadRequest,
+				shared.APIResponse{
+					Success: false,
+					Message: "invalid discipline_id",
+				},
+			)
+
+			return
+		}
+
+		disciplineID = parsed
+	}
+
+	// ----------------------------------------------------------
+	// Pagination
+	// ----------------------------------------------------------
+
+	page := 1
+
+	if pageStr != "" {
+
+		parsed, err := strconv.Atoi(pageStr)
+
+		if err != nil || parsed < 1 {
+
+			utils.WriteJSON(
+				w,
+				http.StatusBadRequest,
+				shared.APIResponse{
+					Success: false,
+					Message: "invalid page",
+				},
+			)
+
+			return
+		}
+
+		page = parsed
+	}
+
+	limit := 10
+
+	if limitStr != "" {
+
+		if limitStr == "all" {
+
+			limit = 0
+
+		} else {
+
+			parsed, err := strconv.Atoi(
+				limitStr,
+			)
+
+			if err != nil || parsed < 1 {
+
+				utils.WriteJSON(
+					w,
+					http.StatusBadRequest,
+					shared.APIResponse{
+						Success: false,
+						Message: "invalid limit",
+					},
+				)
+
+				return
+			}
+
+			limit = parsed
+		}
+	}
+
+	// ----------------------------------------------------------
+	// Sorting
+	// ----------------------------------------------------------
+
+	if sortBy == "" {
+		sortBy = "created_at"
+	}
+
+	if orderBy == "" {
+		orderBy = "desc"
+	}
+
+	orderBy = strings.ToUpper(orderBy)
+
+	if orderBy != "ASC" &&
+		orderBy != "DESC" {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "invalid order_by value",
+			},
+		)
+
+		return
+	}
+
+	// ----------------------------------------------------------
+	// Build Query
+	// ----------------------------------------------------------
+
+	query := academyCoach.GetAcademyCoachesQuery{
+		Page:         page,
+		Limit:        limit,
+		Search:       search,
+		DisciplineID: disciplineID,
+		SortBy:       sortBy,
+		OrderBy:      orderBy,
+	}
+
+	// ----------------------------------------------------------
+	// Get Auth User
+	// ----------------------------------------------------------
+
+	authUserID := r.Context().
+		Value(middleware.UserIDKey).
+		( string )
+
+	// ----------------------------------------------------------
+	// Execute Service
+	// ----------------------------------------------------------
+
+	result, err := GetAcademyCoachesService(
+		r.Context(),
+		authUserID,
+		query,
+	)
+
+	if err != nil {
+
+		utils.WriteJSON(
+			w,
+			http.StatusInternalServerError,
+			shared.APIResponse{
+				Success: false,
+				Message: err.Error(),
+			},
+		)
+
+		return
+	}
+
+	// ----------------------------------------------------------
+	// Success Response
+	// ----------------------------------------------------------
+
+	utils.WriteJSON(
+		w,
+		http.StatusOK,
+		shared.APIResponse{
+			Success: true,
+			Message: "coaches fetched successfully",
+			Data:    result,
+		},
+	)
+}
+
+func GetAcademyCoachHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	// ----------------------------------------------------------
+	// Params
+	// ----------------------------------------------------------
+
+	coachID := chi.URLParam(
+		r,
+		"coachID",
+	)
+
+	if coachID == "" {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "coachID is required",
+			},
+		)
+
+		return
+	}
+
+	// ----------------------------------------------------------
+	// Get Auth User
+	// ----------------------------------------------------------
+
+	authUserID := r.Context().
+		Value(middleware.UserIDKey).
+		( string )
+
+	// ----------------------------------------------------------
+	// Execute Service
+	// ----------------------------------------------------------
+
+	result, err := GetAcademyCoachService(
+		r.Context(),
+		authUserID,
+		coachID,
+	)
+
+	if err != nil {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: err.Error(),
+			},
+		)
+
+		return
+	}
+
+	// ----------------------------------------------------------
+	// Success Response
+	// ----------------------------------------------------------
+
+	utils.WriteJSON(
+		w,
+		http.StatusOK,
+		shared.APIResponse{
+			Success: true,
+			Message: "coach fetched successfully",
+			Data:    result,
+		},
+	)
+}
+
+func AssignCoachHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	// ----------------------------------------------------------
+	// Params
+	// ----------------------------------------------------------
+
+	playerID := chi.URLParam(
+		r,
+		"playerID",
+	)
+
+	if playerID == "" {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "playerID is required",
+			},
+		)
+
+		return
+	}
+
+	// ----------------------------------------------------------
+	// Parse Body
+	// ----------------------------------------------------------
+
+	var payload academyCoach.AssignCoachInput
+
+	err := json.NewDecoder(
+		r.Body,
+	).Decode(&payload)
+
+	if err != nil {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "invalid request body",
+			},
+		)
+
+		return
+	}
+
+	if payload.CoachUserID == "" {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "coach_user_id is required",
+			},
+		)
+
+		return
+	}
+
+	// ----------------------------------------------------------
+	// Get Auth User
+	// ----------------------------------------------------------
+
+	authUserID := r.Context().
+		Value(middleware.UserIDKey).
+		( string )
+
+	// ----------------------------------------------------------
+	// Execute Service
+	// ----------------------------------------------------------
+
+	err = AssignCoachService(
+		r.Context(),
+		authUserID,
+		playerID,
+		payload.CoachUserID,
+	)
+
+	if err != nil {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: err.Error(),
+			},
+		)
+
+		return
+	}
+
+	// ----------------------------------------------------------
+	// Success Response
+	// ----------------------------------------------------------
+
+	utils.WriteJSON(
+		w,
+		http.StatusOK,
+		shared.APIResponse{
+			Success: true,
+			Message: "coach assigned successfully",
+		},
+	)
+}
+
+func RemoveCoachHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	// ----------------------------------------------------------
+	// Params
+	// ----------------------------------------------------------
+
+	playerID := chi.URLParam(
+		r,
+		"playerID",
+	)
+
+	if playerID == "" {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "playerID is required",
+			},
+		)
+
+		return
+	}
+
+	// ----------------------------------------------------------
+	// Get Auth User
+	// ----------------------------------------------------------
+
+	authUserID := r.Context().
+		Value(middleware.UserIDKey).
+		( string )
+
+	// ----------------------------------------------------------
+	// Execute Service
+	// ----------------------------------------------------------
+
+	err := RemoveCoachService(
+		r.Context(),
+		authUserID,
+		playerID,
+	)
+
+	if err != nil {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: err.Error(),
+			},
+		)
+
+		return
+	}
+
+	// ----------------------------------------------------------
+	// Success Response
+	// ----------------------------------------------------------
+
+	utils.WriteJSON(
+		w,
+		http.StatusOK,
+		shared.APIResponse{
+			Success: true,
+			Message: "coach removed successfully",
 		},
 	)
 }

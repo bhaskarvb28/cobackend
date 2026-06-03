@@ -2,9 +2,11 @@ package academy
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"cobackend/internal/academyAdmin"
+	"cobackend/internal/academyCoach"
 	"cobackend/internal/districtAdmin"
 	"cobackend/internal/player"
 	"cobackend/internal/profile"
@@ -206,6 +208,248 @@ func GetAcademyPlayerService(
 	}
 
 	return playerProfile, nil
+}
+
+func GetAcademyCoachesService(
+	ctx context.Context,
+	authUserID string,
+	query academyCoach.GetAcademyCoachesQuery,
+) (
+	academyCoach.PaginatedAcademyCoachesResponse,
+	error,
+) {
+
+	// ----------------------------------------------------------
+	// Get Academy ID From Admin
+	// ----------------------------------------------------------
+
+	academyID, err := academyAdmin.GetAcademyAdminAcademyID(
+		ctx,
+		authUserID,
+	)
+
+	if err != nil {
+
+		return academyCoach.PaginatedAcademyCoachesResponse{},
+			err
+	}
+
+	// ----------------------------------------------------------
+	// Repository
+	// ----------------------------------------------------------
+
+	result, err := academyCoach.GetAcademyCoaches(
+		ctx,
+		academyID,
+		query,
+	)
+
+	if err != nil {
+
+		return academyCoach.PaginatedAcademyCoachesResponse{},
+			err
+	}
+
+	return result, nil
+}
+
+func GetAcademyCoachService(
+	ctx context.Context,
+	authUserID string,
+	coachID string,
+) (
+	academyCoach.AcademyCoachProfileResponse,
+	error,
+) {
+
+	// ----------------------------------------------------------
+	// Get Academy ID
+	// ----------------------------------------------------------
+
+	academyID, err := academyAdmin.GetAcademyAdminAcademyID(
+		ctx,
+		authUserID,
+	)
+
+	if err != nil {
+
+		return academyCoach.AcademyCoachProfileResponse{},
+			err
+	}
+
+	// ----------------------------------------------------------
+	// Repository
+	// ----------------------------------------------------------
+
+	result, err := academyCoach.GetAcademyCoach(
+		ctx,
+		academyID,
+		coachID,
+	)
+
+	if err != nil {
+
+		return academyCoach.AcademyCoachProfileResponse{},
+			err
+	}
+
+	return result, nil
+}
+
+func AssignCoachService(
+	ctx context.Context,
+	authUserID string,
+	playerID string,
+	coachUserID string,
+) error {
+
+	// ----------------------------------------------------------
+	// Get Academy ID
+	// ----------------------------------------------------------
+
+	academyID, err := academyAdmin.GetAcademyAdminAcademyID(
+		ctx,
+		authUserID,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	// ----------------------------------------------------------
+	// Validate Player Belongs To Academy
+	// ----------------------------------------------------------
+
+	playerExists, err := player.ValidateAcademyPlayer(
+		ctx,
+		academyID,
+		playerID,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	if !playerExists {
+
+		return errors.New(
+			"player not found in academy",
+		)
+	}
+
+	// ----------------------------------------------------------
+	// Validate Coach Belongs To Academy
+	// ----------------------------------------------------------
+
+	coachExists, err := academyCoach.ValidateAcademyCoach(
+		ctx,
+		academyID,
+		coachUserID,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	if !coachExists {
+
+		return errors.New(
+			"coach not found in academy",
+		)
+	}
+
+	// ----------------------------------------------------------
+	// Check Existing Assignment
+	// ----------------------------------------------------------
+
+	alreadyAssigned, err := player.CheckPlayerCoachAssignment(
+		ctx,
+		playerID,
+		coachUserID,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	if alreadyAssigned {
+
+		return errors.New(
+			"coach already assigned to player",
+		)
+	}
+
+	// ----------------------------------------------------------
+	// Assign Coach
+	// ----------------------------------------------------------
+
+	err = player.AssignCoach(
+		ctx,
+		playerID,
+		coachUserID,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func RemoveCoachService(
+	ctx context.Context,
+	authUserID string,
+	playerID string,
+) error {
+
+	// ----------------------------------------------------------
+	// Get Academy ID
+	// ----------------------------------------------------------
+
+	academyID, err := academyAdmin.GetAcademyAdminAcademyID(
+		ctx,
+		authUserID,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	// ----------------------------------------------------------
+	// Validate Player
+	// ----------------------------------------------------------
+
+	playerExists, err := player.ValidateAcademyPlayer(
+		ctx,
+		academyID,
+		playerID,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	if !playerExists {
+
+		return errors.New(
+			"player not found in academy",
+		)
+	}
+
+	// ----------------------------------------------------------
+	// Remove Coach
+	// ----------------------------------------------------------
+
+	err = player.RemoveCoach(
+		ctx,
+		playerID,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func CreateAcademyBuildingService(

@@ -65,7 +65,6 @@ type PaginatedAcademies struct {
 	HasPrevious bool `json:"has_previous"`
 }
 
-
 // ==========================================================
 // Academy Buildings
 // ==========================================================
