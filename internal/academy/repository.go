@@ -1334,7 +1334,7 @@ func GetAcademyBuildingLanesRepository(
 
 	defer rows.Close()
 
-	var lanes []AcademyBuildingLaneResponse
+	lanes := []AcademyBuildingLaneResponse{}
 
 	for rows.Next() {
 
