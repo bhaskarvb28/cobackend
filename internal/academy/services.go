@@ -1062,3 +1062,44 @@ func DeleteAcademyBuildingLaneService(
 		laneID,
 	)
 }
+
+func DeleteAcademyBuildingService(
+	ctx context.Context,
+	userID string,
+	buildingID int64,
+) error {
+
+	if buildingID <= 0 {
+		return shared.ErrInvalidBuildingID
+	}
+
+	academyID, err := academyAdmin.
+		GetAcademyAdminAcademyID(
+			ctx,
+			userID,
+		)
+
+	if err != nil {
+		return err
+	}
+
+	isOwned, err :=
+		CheckAcademyBuildingOwnershipRepository(
+			ctx,
+			buildingID,
+			academyID,
+		)
+
+	if err != nil {
+		return err
+	}
+
+	if !isOwned {
+		return shared.ErrUnauthorizedBuildingAccess
+	}
+
+	return DeleteAcademyBuildingRepository(
+		ctx,
+		buildingID,
+	)
+}

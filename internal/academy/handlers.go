@@ -1164,6 +1164,72 @@ func GetAcademyBuildingHandler(
 	)
 }
 
+func DeleteAcademyBuildingHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	buildingIDParam := chi.URLParam(
+		r,
+		"buildingID",
+	)
+
+	buildingID, err := strconv.ParseInt(
+		buildingIDParam,
+		10,
+		64,
+	)
+
+	if err != nil || buildingID <= 0 {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "invalid building id",
+			},
+		)
+
+		return
+	}
+
+	authUserID := r.Context().
+		Value(
+			middleware.UserIDKey,
+		).
+		(string)
+
+	err = DeleteAcademyBuildingService(
+		r.Context(),
+		authUserID,
+		buildingID,
+	)
+
+	if err != nil {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: err.Error(),
+			},
+		)
+
+		return
+	}
+
+	utils.WriteJSON(
+		w,
+		http.StatusOK,
+		shared.APIResponse{
+			Success: true,
+			Message: "building deleted successfully",
+		},
+	)
+}
+
 func UpdateAcademyBuildingHandler(
 	w http.ResponseWriter,
 	r *http.Request,

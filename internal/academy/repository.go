@@ -1447,3 +1447,23 @@ func DeleteAcademyBuildingLaneRepository(
 
 	return err
 }
+
+func DeleteAcademyBuildingRepository(
+	ctx context.Context,
+	buildingID int64,
+) error {
+
+	_, err := db.DB.Exec(
+		ctx,
+		`
+		UPDATE academy_buildings
+		SET
+			is_active = FALSE,
+			updated_at = CURRENT_TIMESTAMP
+		WHERE id = $1
+		`,
+		buildingID,
+	)
+
+	return err
+}

@@ -143,6 +143,11 @@ func RegisterRoutes(r chi.Router) {
 				UpdateAcademyBuildingHandler,
 			)
 
+			r.Delete(
+				"/{buildingID}",
+				DeleteAcademyBuildingHandler,
+			)
+
 			// ==============================================
 			// Building Disciplines
 			// ==============================================
