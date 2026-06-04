@@ -1456,10 +1456,7 @@ func DeleteAcademyBuildingRepository(
 	_, err := db.DB.Exec(
 		ctx,
 		`
-		UPDATE academy_buildings
-		SET
-			is_active = FALSE,
-			updated_at = CURRENT_TIMESTAMP
+		DELETE FROM academy_buildings
 		WHERE id = $1
 		`,
 		buildingID,
