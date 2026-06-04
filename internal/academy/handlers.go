@@ -1099,6 +1099,458 @@ func RemoveCoachHandler(
 	)
 }
 
+func GetAcademyBuildingHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	buildingIDParam := chi.URLParam(
+		r,
+		"buildingID",
+	)
+
+	buildingID, err := strconv.ParseInt(
+		buildingIDParam,
+		10,
+		64,
+	)
+
+	if err != nil || buildingID <= 0 {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "invalid building id",
+			},
+		)
+
+		return
+	}
+
+	authUserID := r.Context().
+		Value(middleware.UserIDKey).
+		( string )
+
+	response, err := GetAcademyBuildingService(
+		r.Context(),
+		authUserID,
+		buildingID,
+	)
+
+	if err != nil {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: err.Error(),
+			},
+		)
+
+		return
+	}
+
+	utils.WriteJSON(
+		w,
+		http.StatusOK,
+		shared.APIResponse{
+			Success: true,
+			Message: "building fetched successfully",
+			Data:    response,
+		},
+	)
+}
+
+func UpdateAcademyBuildingHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	defer r.Body.Close()
+
+	var input UpdateAcademyBuildingInput
+
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+
+	err := decoder.Decode(&input)
+
+	if err != nil {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "invalid request body",
+			},
+		)
+
+		return
+	}
+
+	buildingID, err := strconv.ParseInt(
+		chi.URLParam(r, "buildingID"),
+		10,
+		64,
+	)
+
+	if err != nil {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "invalid building id",
+			},
+		)
+
+		return
+	}
+
+	authUserID := r.Context().
+		Value(middleware.UserIDKey).
+		( string )
+
+	err = UpdateAcademyBuildingService(
+		r.Context(),
+		authUserID,
+		buildingID,
+		input,
+	)
+
+	if err != nil {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: err.Error(),
+			},
+		)
+
+		return
+	}
+
+	utils.WriteJSON(
+		w,
+		http.StatusOK,
+		shared.APIResponse{
+			Success: true,
+			Message: "building updated successfully",
+		},
+	)
+}
+
+func RemoveAcademyBuildingDisciplineHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	buildingID, err := strconv.ParseInt(
+		chi.URLParam(r, "buildingID"),
+		10,
+		64,
+	)
+
+	if err != nil {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "invalid building id",
+			},
+		)
+
+		return
+	}
+
+	disciplineID, err := strconv.Atoi(
+		chi.URLParam(r, "disciplineID"),
+	)
+
+	if err != nil {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: "invalid discipline id",
+			},
+		)
+
+		return
+	}
+
+	authUserID := r.Context().
+		Value(middleware.UserIDKey).
+		( string )
+
+	err = RemoveAcademyBuildingDisciplineService(
+		r.Context(),
+		authUserID,
+		buildingID,
+		disciplineID,
+	)
+
+	if err != nil {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: err.Error(),
+			},
+		)
+
+		return
+	}
+
+	utils.WriteJSON(
+		w,
+		http.StatusOK,
+		shared.APIResponse{
+			Success: true,
+			Message: "building discipline removed successfully",
+		},
+	)
+}
+
+func RemoveAcademyBuildingEventHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	buildingID, err := strconv.ParseInt(
+		chi.URLParam(r, "buildingID"),
+		10,
+		64,
+	)
+
+	if err != nil {
+
+		return
+	}
+
+	eventID, err := strconv.Atoi(
+		chi.URLParam(r, "eventID"),
+	)
+
+	if err != nil {
+
+		return
+	}
+
+	authUserID := r.Context().
+		Value(middleware.UserIDKey).
+		( string )
+
+	err = RemoveAcademyBuildingEventService(
+		r.Context(),
+		authUserID,
+		buildingID,
+		eventID,
+	)
+
+	if err != nil {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: err.Error(),
+			},
+		)
+
+		return
+	}
+
+	utils.WriteJSON(
+		w,
+		http.StatusOK,
+		shared.APIResponse{
+			Success: true,
+			Message: "building event removed successfully",
+		},
+	)
+}
+
+func GetAcademyBuildingLanesHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	buildingID, err := strconv.ParseInt(
+		chi.URLParam(r, "buildingID"),
+		10,
+		64,
+	)
+
+	if err != nil {
+
+		return
+	}
+
+	authUserID := r.Context().
+		Value(middleware.UserIDKey).
+		( string )
+
+	response, err := GetAcademyBuildingLanesService(
+		r.Context(),
+		authUserID,
+		buildingID,
+	)
+
+	if err != nil {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: err.Error(),
+			},
+		)
+
+		return
+	}
+
+	utils.WriteJSON(
+		w,
+		http.StatusOK,
+		shared.APIResponse{
+			Success: true,
+			Message: "building lanes fetched successfully",
+			Data:    response,
+		},
+	)
+}
+
+func UpdateAcademyBuildingLaneHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	defer r.Body.Close()
+
+	var input UpdateAcademyBuildingLaneInput
+
+	decoder := json.NewDecoder(r.Body)
+	decoder.DisallowUnknownFields()
+
+	err := decoder.Decode(&input)
+
+	if err != nil {
+
+		return
+	}
+
+	laneID, err := strconv.ParseInt(
+		chi.URLParam(r, "laneID"),
+		10,
+		64,
+	)
+
+	if err != nil {
+
+		return
+	}
+
+	authUserID := r.Context().
+		Value(middleware.UserIDKey).
+		( string )
+
+	err = UpdateAcademyBuildingLaneService(
+		r.Context(),
+		authUserID,
+		laneID,
+		input,
+	)
+
+	if err != nil {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: err.Error(),
+			},
+		)
+
+		return
+	}
+
+	utils.WriteJSON(
+		w,
+		http.StatusOK,
+		shared.APIResponse{
+			Success: true,
+			Message: "lane updated successfully",
+		},
+	)
+}
+
+func DeleteAcademyBuildingLaneHandler(
+	w http.ResponseWriter,
+	r *http.Request,
+) {
+
+	laneID, err := strconv.ParseInt(
+		chi.URLParam(r, "laneID"),
+		10,
+		64,
+	)
+
+	if err != nil {
+
+		return
+	}
+
+	authUserID := r.Context().
+		Value(middleware.UserIDKey).
+		( string )
+
+	err = DeleteAcademyBuildingLaneService(
+		r.Context(),
+		authUserID,
+		laneID,
+	)
+
+	if err != nil {
+
+		utils.WriteJSON(
+			w,
+			http.StatusBadRequest,
+			shared.APIResponse{
+				Success: false,
+				Message: err.Error(),
+			},
+		)
+
+		return
+	}
+
+	utils.WriteJSON(
+		w,
+		http.StatusOK,
+		shared.APIResponse{
+			Success: true,
+			Message: "lane deleted successfully",
+		},
+	)
+}
+
 func CreateAcademyBuildingHandler(
 	w http.ResponseWriter,
 	r *http.Request,

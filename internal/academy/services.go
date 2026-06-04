@@ -772,3 +772,293 @@ func GetAvailableLanesService(
 	return lanes, nil
 }
 
+func GetAcademyBuildingService(
+	ctx context.Context,
+	userID string,
+	buildingID int64,
+) (*AcademyBuildingDetailsResponse, error) {
+
+	if buildingID <= 0 {
+		return nil, shared.ErrInvalidBuildingID
+	}
+
+	academyID, err := academyAdmin.
+		GetAcademyAdminAcademyID(
+			ctx,
+			userID,
+		)
+
+	if err != nil {
+		return nil, err
+	}
+
+	isOwned, err :=
+		CheckAcademyBuildingOwnershipRepository(
+			ctx,
+			buildingID,
+			academyID,
+		)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if !isOwned {
+		return nil,
+			shared.ErrUnauthorizedBuildingAccess
+	}
+
+	return GetAcademyBuildingRepository(
+		ctx,
+		buildingID,
+	)
+}
+
+func UpdateAcademyBuildingService(
+	ctx context.Context,
+	userID string,
+	buildingID int64,
+	input UpdateAcademyBuildingInput,
+) error {
+
+	input.BuildingName =
+		strings.TrimSpace(
+			input.BuildingName,
+		)
+
+	if input.BuildingName == "" {
+		return shared.ErrAcademyBuildingNameRequired
+	}
+
+	academyID, err := academyAdmin.
+		GetAcademyAdminAcademyID(
+			ctx,
+			userID,
+		)
+
+	if err != nil {
+		return err
+	}
+
+	isOwned, err :=
+		CheckAcademyBuildingOwnershipRepository(
+			ctx,
+			buildingID,
+			academyID,
+		)
+
+	if err != nil {
+		return err
+	}
+
+	if !isOwned {
+		return shared.ErrUnauthorizedBuildingAccess
+	}
+
+	return UpdateAcademyBuildingRepository(
+		ctx,
+		buildingID,
+		input,
+	)
+}
+
+func RemoveAcademyBuildingDisciplineService(
+	ctx context.Context,
+	userID string,
+	buildingID int64,
+	disciplineID int,
+) error {
+
+	academyID, err := academyAdmin.
+		GetAcademyAdminAcademyID(
+			ctx,
+			userID,
+		)
+
+	if err != nil {
+		return err
+	}
+
+	isOwned, err :=
+		CheckAcademyBuildingOwnershipRepository(
+			ctx,
+			buildingID,
+			academyID,
+		)
+
+	if err != nil {
+		return err
+	}
+
+	if !isOwned {
+		return shared.ErrUnauthorizedBuildingAccess
+	}
+
+	return RemoveAcademyBuildingDisciplineRepository(
+		ctx,
+		buildingID,
+		disciplineID,
+	)
+}
+
+func RemoveAcademyBuildingEventService(
+	ctx context.Context,
+	userID string,
+	buildingID int64,
+	eventID int,
+) error {
+
+	academyID, err := academyAdmin.
+		GetAcademyAdminAcademyID(
+			ctx,
+			userID,
+		)
+
+	if err != nil {
+		return err
+	}
+
+	isOwned, err :=
+		CheckAcademyBuildingOwnershipRepository(
+			ctx,
+			buildingID,
+			academyID,
+		)
+
+	if err != nil {
+		return err
+	}
+
+	if !isOwned {
+		return shared.ErrUnauthorizedBuildingAccess
+	}
+
+	return RemoveAcademyBuildingEventRepository(
+		ctx,
+		buildingID,
+		eventID,
+	)
+}
+
+func GetAcademyBuildingLanesService(
+	ctx context.Context,
+	userID string,
+	buildingID int64,
+) ([]AcademyBuildingLaneResponse, error) {
+
+	academyID, err := academyAdmin.
+		GetAcademyAdminAcademyID(
+			ctx,
+			userID,
+		)
+
+	if err != nil {
+		return nil, err
+	}
+
+	isOwned, err :=
+		CheckAcademyBuildingOwnershipRepository(
+			ctx,
+			buildingID,
+			academyID,
+		)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if !isOwned {
+		return nil,
+			shared.ErrUnauthorizedBuildingAccess
+	}
+
+	return GetAcademyBuildingLanesRepository(
+		ctx,
+		buildingID,
+	)
+}
+
+func UpdateAcademyBuildingLaneService(
+	ctx context.Context,
+	userID string,
+	laneID int64,
+	input UpdateAcademyBuildingLaneInput,
+) error {
+
+	input.LaneName =
+		strings.TrimSpace(
+			input.LaneName,
+		)
+
+	if input.LaneName == "" {
+		return shared.ErrLaneNameRequired
+	}
+
+	academyID, err := academyAdmin.
+		GetAcademyAdminAcademyID(
+			ctx,
+			userID,
+		)
+
+	if err != nil {
+		return err
+	}
+
+	isOwned, err :=
+		CheckLaneOwnershipRepository(
+			ctx,
+			laneID,
+			academyID,
+		)
+
+	if err != nil {
+		return err
+	}
+
+	if !isOwned {
+		return shared.ErrUnauthorizedBuildingAccess
+	}
+
+	return UpdateAcademyBuildingLaneRepository(
+		ctx,
+		laneID,
+		input,
+	)
+}
+
+func DeleteAcademyBuildingLaneService(
+	ctx context.Context,
+	userID string,
+	laneID int64,
+) error {
+
+	academyID, err := academyAdmin.
+		GetAcademyAdminAcademyID(
+			ctx,
+			userID,
+		)
+
+	if err != nil {
+		return err
+	}
+
+	isOwned, err :=
+		CheckLaneOwnershipRepository(
+			ctx,
+			laneID,
+			academyID,
+		)
+
+	if err != nil {
+		return err
+	}
+
+	if !isOwned {
+		return shared.ErrUnauthorizedBuildingAccess
+	}
+
+	return DeleteAcademyBuildingLaneRepository(
+		ctx,
+		laneID,
+	)
+}

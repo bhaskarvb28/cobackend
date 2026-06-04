@@ -149,12 +149,39 @@ type AcademyBuildingLaneResponse struct {
 	LaneName string `json:"lane_name"`
 
 	IsUnderMaintenance bool `json:"is_under_maintenance"`
-
-	IsOccupied bool `json:"is_occupied"`
 }
 
 type AvailableLaneResponse struct {
 	ID int64 `json:"id"`
 
 	LaneName string `json:"lane_name"`
+}
+
+type AcademyBuildingDetailsResponse struct {
+	ID int64 `json:"id"`
+
+	AcademyID string `json:"academy_id"`
+
+	BuildingName string `json:"building_name"`
+
+	IsActive bool `json:"is_active"`
+
+	Disciplines []BuildingDiscipline `json:"disciplines"`
+
+	Events []BuildingEvent `json:"events"`
+
+	Lanes []AcademyBuildingLaneResponse `json:"lanes"`
+}
+
+type UpdateAcademyBuildingInput struct {
+	BuildingName string `json:"building_name"`
+
+	IsActive *bool `json:"is_active,omitempty"`
+}
+
+type UpdateAcademyBuildingLaneInput struct {
+	LaneName string `json:"lane_name"`
+
+	IsUnderMaintenance *bool `json:"is_under_maintenance,omitempty"`
+
 }

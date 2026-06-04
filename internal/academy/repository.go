@@ -138,7 +138,7 @@ func CheckAcademyExists(
 
 func CheckAcademyBelongsToDistrict(
 	ctx context.Context,
-	academyID int,
+	academyID string,
 	districtID int,
 ) (bool, error) {
 
@@ -149,14 +149,22 @@ func CheckAcademyBelongsToDistrict(
 		`
 		SELECT EXISTS(
 			SELECT 1
-			FROM academies
-			WHERE id = $1
-			AND district_id = $2
+
+			FROM academies a
+
+			INNER JOIN pincodes p
+				ON p.id = a.pincode_id
+
+			WHERE
+				a.id = $1
+				AND p.district_id = $2
 		)
 		`,
 		academyID,
 		districtID,
-	).Scan(&exists)
+	).Scan(
+		&exists,
+	)
 
 	if err != nil {
 		return false, err
@@ -748,12 +756,24 @@ func AddAcademyBuildingDisciplineRepository(
 	)
 
 	if err != nil {
+
+		if pgError, ok := err.(*pgconn.PgError); ok {
+
+			switch pgError.Code {
+
+			case "23505":
+				return nil, shared.ErrDisciplineAlreadyAssigned
+
+			case "23503":
+				return nil, shared.ErrDisciplineNotFound
+			}
+		}
+
 		return nil, err
 	}
 
 	return &response, nil
 }
-
 
 
 // ============================================================================
@@ -791,6 +811,19 @@ func AddAcademyBuildingEventRepository(
 	)
 
 	if err != nil {
+
+		if pgError, ok := err.(*pgconn.PgError); ok {
+
+			switch pgError.Code {
+
+			case "23505":
+				return nil, shared.ErrEventAlreadyAssigned
+
+			case "23503":
+				return nil, shared.ErrShootingEventNotFound
+			}
+		}
+
 		return nil, err
 	}
 
@@ -1028,9 +1061,8 @@ func CreateAcademyBuildingLaneRepository(
 			id,
 			academy_building_id,
 			lane_name,
-			is_under_maintenance,
-			is_occupied
-	`
+			is_under_maintenance
+		`
 
 	var lane AcademyBuildingLaneResponse
 
@@ -1044,7 +1076,6 @@ func CreateAcademyBuildingLaneRepository(
 		&lane.AcademyBuildingID,
 		&lane.LaneName,
 		&lane.IsUnderMaintenance,
-		&lane.IsOccupied,
 	)
 
 	if err != nil {
@@ -1133,4 +1164,286 @@ func GetAvailableLanesRepository(
 	}
 
 	return lanes, nil
+}
+
+func GetAcademyBuildingRepository(
+	ctx context.Context,
+	buildingID int64,
+) (*AcademyBuildingDetailsResponse, error) {
+
+	var building AcademyBuildingDetailsResponse
+
+	err := db.DB.QueryRow(
+		ctx,
+		`
+		SELECT
+			id,
+			academy_id,
+			building_name,
+			is_active
+		FROM academy_buildings
+		WHERE id = $1
+		`,
+		buildingID,
+	).Scan(
+		&building.ID,
+		&building.AcademyID,
+		&building.BuildingName,
+		&building.IsActive,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	disciplines, err :=
+		GetAcademyBuildingDisciplinesRepository(
+			ctx,
+			buildingID,
+		)
+
+	if err != nil {
+		return nil, err
+	}
+
+	events, err :=
+		GetAcademyBuildingEventsRepository(
+			ctx,
+			buildingID,
+		)
+
+	if err != nil {
+		return nil, err
+	}
+
+	lanes, err :=
+		GetAcademyBuildingLanesRepository(
+			ctx,
+			buildingID,
+		)
+
+	if err != nil {
+		return nil, err
+	}
+
+	building.Disciplines = disciplines
+	building.Events = events
+	building.Lanes = lanes
+
+	return &building, nil
+}
+
+func UpdateAcademyBuildingRepository(
+	ctx context.Context,
+	buildingID int64,
+	input UpdateAcademyBuildingInput,
+) error {
+
+	_, err := db.DB.Exec(
+		ctx,
+		`
+		UPDATE academy_buildings
+		SET
+			building_name =
+				COALESCE(
+					NULLIF($2, ''),
+					building_name
+				),
+
+			is_active =
+				COALESCE(
+					$3,
+					is_active
+				)
+
+		WHERE id = $1
+		`,
+		buildingID,
+		input.BuildingName,
+		input.IsActive,
+	)
+
+	return err
+}
+
+func RemoveAcademyBuildingDisciplineRepository(
+	ctx context.Context,
+	buildingID int64,
+	disciplineID int,
+) error {
+
+	_, err := db.DB.Exec(
+		ctx,
+		`
+		DELETE FROM academy_building_disciplines
+		WHERE
+			academy_building_id = $1
+			AND discipline_id = $2
+		`,
+		buildingID,
+		disciplineID,
+	)
+
+	return err
+}
+
+func RemoveAcademyBuildingEventRepository(
+	ctx context.Context,
+	buildingID int64,
+	eventID int,
+) error {
+
+	_, err := db.DB.Exec(
+		ctx,
+		`
+		DELETE FROM academy_building_events
+		WHERE
+			academy_building_id = $1
+			AND shooting_event_id = $2
+		`,
+		buildingID,
+		eventID,
+	)
+
+	return err
+}
+
+func GetAcademyBuildingLanesRepository(
+	ctx context.Context,
+	buildingID int64,
+) ([]AcademyBuildingLaneResponse, error) {
+
+	rows, err := db.DB.Query(
+		ctx,
+		`
+		SELECT
+			id,
+			academy_building_id,
+			lane_name,
+			is_under_maintenance
+		FROM academy_building_lanes
+		WHERE academy_building_id = $1
+		ORDER BY lane_name ASC
+		`,
+		buildingID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	var lanes []AcademyBuildingLaneResponse
+
+	for rows.Next() {
+
+		var lane AcademyBuildingLaneResponse
+
+		err := rows.Scan(
+			&lane.ID,
+			&lane.AcademyBuildingID,
+			&lane.LaneName,
+			&lane.IsUnderMaintenance,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		lanes = append(
+			lanes,
+			lane,
+		)
+	}
+
+	return lanes, rows.Err()
+}
+
+func CheckLaneOwnershipRepository(
+	ctx context.Context,
+	laneID int64,
+	academyID string,
+) (bool, error) {
+
+	var exists bool
+
+	err := db.DB.QueryRow(
+		ctx,
+		`
+		SELECT EXISTS (
+			SELECT 1
+
+			FROM academy_building_lanes abl
+
+			INNER JOIN academy_buildings ab
+				ON ab.id =
+					abl.academy_building_id
+
+			WHERE
+				abl.id = $1
+				AND ab.academy_id = $2
+		)
+		`,
+		laneID,
+		academyID,
+	).Scan(
+		&exists,
+	)
+
+	if err != nil {
+		return false, err
+	}
+
+	return exists, nil
+}
+
+func UpdateAcademyBuildingLaneRepository(
+	ctx context.Context,
+	laneID int64,
+	input UpdateAcademyBuildingLaneInput,
+) error {
+
+	_, err := db.DB.Exec(
+		ctx,
+		`
+		UPDATE academy_building_lanes
+		SET
+			lane_name =
+				COALESCE(
+					NULLIF($2, ''),
+					lane_name
+				),
+
+			is_under_maintenance =
+				COALESCE(
+					$3,
+					is_under_maintenance
+				)
+
+		WHERE id = $1
+		`,
+		laneID,
+		input.LaneName,
+		input.IsUnderMaintenance,
+	)
+
+	return err
+}
+
+func DeleteAcademyBuildingLaneRepository(
+	ctx context.Context,
+	laneID int64,
+) error {
+
+	_, err := db.DB.Exec(
+		ctx,
+		`
+		DELETE FROM academy_building_lanes
+		WHERE id = $1
+		`,
+		laneID,
+	)
+
+	return err
 }

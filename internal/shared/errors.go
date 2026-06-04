@@ -54,9 +54,15 @@ var (
 
 	// Discipline
 	ErrInvalidDisciplineID = errors.New("invalid discipline id")
+	ErrDisciplineAlreadyAssigned = errors.New("discipline already assigned to building")
+	ErrDisciplineNotFound = errors.New("discipline not found")
+
 
 	// Shooting Event
 	ErrInvalidShootingEventID = errors.New("invalid shooting event id")
+	ErrEventAlreadyAssigned = errors.New("shooting event already assigned to building")
+	ErrShootingEventNotFound = errors.New("shooting event not found")
+
 
 	// Lane
 	ErrLaneNameRequired = errors.New("lane name is required")
@@ -80,6 +86,10 @@ var (
 
 	// Players
 	ErrPlayerIDRequired = errors.New("player id is required")
+
+
+
+
 
 
 	// ----------------------------------------------------------

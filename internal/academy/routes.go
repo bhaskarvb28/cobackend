@@ -30,18 +30,10 @@ func RegisterRoutes(r chi.Router) {
 				"district_admin",
 			))
 
-			// ==============================================
-			// Create Academy
-			// ==============================================
-
 			r.Post(
 				"/",
 				CreateAcademyHandler,
 			)
-
-			// ==============================================
-			// Get ONLY District Admin Academies
-			// ==============================================
 
 			r.Get(
 				"/my-district",
@@ -59,10 +51,6 @@ func RegisterRoutes(r chi.Router) {
 				"super_admin",
 			))
 
-			// ==============================================
-			// Get All Academies
-			// ==============================================
-
 			r.Get(
 				"/",
 				GetAcademiesHandler,
@@ -79,36 +67,20 @@ func RegisterRoutes(r chi.Router) {
 				"academy_admin",
 			))
 
-			// ==============================================
-			// Get Academy Players
-			// ==============================================
-
 			r.Get(
 				"/",
 				GetAcademyPlayersHandler,
 			)
-
-			// ==============================================
-			// Get Single Player
-			// ==============================================
 
 			r.Get(
 				"/{playerID}",
 				GetAcademyPlayerHandler,
 			)
 
-			// ==============================================
-			// Assign Coach To Player
-			// ==============================================
-
 			r.Post(
 				"/{playerID}/assign-coach",
 				AssignCoachHandler,
 			)
-
-			// ==============================================
-			// Remove Coach From Player
-			// ==============================================
 
 			r.Delete(
 				"/{playerID}/coach",
@@ -126,18 +98,10 @@ func RegisterRoutes(r chi.Router) {
 				"academy_admin",
 			))
 
-			// ==============================================
-			// Get Academy Coaches
-			// ==============================================
-
 			r.Get(
 				"/",
 				GetAcademyCoachesHandler,
 			)
-
-			// ==============================================
-			// Get Single Coach
-			// ==============================================
 
 			r.Get(
 				"/{coachID}",
@@ -146,63 +110,107 @@ func RegisterRoutes(r chi.Router) {
 		})
 
 		// ==================================================
-		// Building Routes
+		// Building Management Routes
 		// ==================================================
 
 		r.Route("/buildings", func(r chi.Router) {
 
-			// ==============================================
-			// Academy Admin Only
-			// ==============================================
-
-			r.Group(func(r chi.Router) {
-
-				r.Use(middleware.RequireRole(
-					"academy_admin",
-				))
-
-				r.Post(
-					"/",
-					CreateAcademyBuildingHandler,
-				)
-
-				r.Get(
-					"/",
-					GetAcademyBuildingsHandler,
-				)
-
-				r.Post(
-					"/{buildingID}/disciplines",
-					AddAcademyBuildingDisciplineHandler,
-				)
-
-				r.Post(
-					"/{buildingID}/events",
-					AddAcademyBuildingEventHandler,
-				)
-
-				r.Post(
-					"/{buildingID}/lanes",
-					AddAcademyBuildingLaneHandler,
-				)
-			})
+			r.Use(middleware.RequireRole(
+				"academy_admin",
+			))
 
 			// ==============================================
-			// Academy Admin + Player
+			// Building CRUD
 			// ==============================================
 
-			r.Group(func(r chi.Router) {
+			r.Post(
+				"/",
+				CreateAcademyBuildingHandler,
+			)
 
-				r.Use(middleware.RequireRole(
-					"academy_admin",
-					"player",
-				))
+			r.Get(
+				"/",
+				GetAcademyBuildingsHandler,
+			)
 
-				r.Get(
-					"/{buildingID}/lanes/available",
-					GetAvailableLanesHandler,
-				)
-			})
+			r.Get(
+				"/{buildingID}",
+				GetAcademyBuildingHandler,
+			)
+
+			r.Patch(
+				"/{buildingID}",
+				UpdateAcademyBuildingHandler,
+			)
+
+			// ==============================================
+			// Building Disciplines
+			// ==============================================
+
+			r.Post(
+				"/{buildingID}/disciplines",
+				AddAcademyBuildingDisciplineHandler,
+			)
+
+			r.Delete(
+				"/{buildingID}/disciplines/{disciplineID}",
+				RemoveAcademyBuildingDisciplineHandler,
+			)
+
+			// ==============================================
+			// Building Events
+			// ==============================================
+
+			r.Post(
+				"/{buildingID}/events",
+				AddAcademyBuildingEventHandler,
+			)
+
+			r.Delete(
+				"/{buildingID}/events/{eventID}",
+				RemoveAcademyBuildingEventHandler,
+			)
+
+			// ==============================================
+			// Building Lanes
+			// ==============================================
+
+			r.Post(
+				"/{buildingID}/lanes",
+				AddAcademyBuildingLaneHandler,
+			)
+
+			r.Get(
+				"/{buildingID}/lanes",
+				GetAcademyBuildingLanesHandler,
+			)
+
+			r.Patch(
+				"/lanes/{laneID}",
+				UpdateAcademyBuildingLaneHandler,
+			)
+
+			r.Delete(
+				"/lanes/{laneID}",
+				DeleteAcademyBuildingLaneHandler,
+			)
+		})
+
+		// ==================================================
+		// Lane Availability
+		// ==================================================
+
+		r.Group(func(r chi.Router) {
+
+			r.Use(middleware.RequireRole(
+				"academy_admin",
+				"player",
+			))
+
+			r.Get(
+				"/buildings/{buildingID}/lanes/available",
+				GetAvailableLanesHandler,
+			)
 		})
 	})
 }
