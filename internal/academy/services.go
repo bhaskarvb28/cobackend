@@ -1103,3 +1103,42 @@ func DeleteAcademyBuildingService(
 		buildingID,
 	)
 }
+
+func GetAvailableBuildingEventsService(
+	ctx context.Context,
+	userID string,
+	buildingID int64,
+) ([]EventResponse, error) {
+
+	academyID, err :=
+		academyAdmin.
+			GetAcademyAdminAcademyID(
+				ctx,
+				userID,
+			)
+
+	if err != nil {
+		return nil, err
+	}
+
+	isOwned, err :=
+		CheckAcademyBuildingOwnershipRepository(
+			ctx,
+			buildingID,
+			academyID,
+		)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if !isOwned {
+		return nil,
+			shared.ErrUnauthorizedBuildingAccess
+	}
+
+	return GetAvailableBuildingEventsRepository(
+		ctx,
+		buildingID,
+	)
+}

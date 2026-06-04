@@ -1,0 +1,186 @@
+[1mdiff --git a/internal/academy/handlers.go b/internal/academy/handlers.go[m
+[1mindex a36ba35..ac3ba13 100644[m
+[1m--- a/internal/academy/handlers.go[m
+[1m+++ b/internal/academy/handlers.go[m
+[36m@@ -1164,71 +1164,6 @@[m [mfunc GetAcademyBuildingHandler([m
+ 	)[m
+ }[m
+ [m
+[31m-func DeleteAcademyBuildingHandler([m
+[31m-	w http.ResponseWriter,[m
+[31m-	r *http.Request,[m
+[31m-) {[m
+[31m-[m
+[31m-	buildingIDParam := chi.URLParam([m
+[31m-		r,[m
+[31m-		"buildingID",[m
+[31m-	)[m
+[31m-[m
+[31m-	buildingID, err := strconv.ParseInt([m
+[31m-		buildingIDParam,[m
+[31m-		10,[m
+[31m-		64,[m
+[31m-	)[m
+[31m-[m
+[31m-	if err != nil || buildingID <= 0 {[m
+[31m-[m
+[31m-		utils.WriteJSON([m
+[31m-			w,[m
+[31m-			http.StatusBadRequest,[m
+[31m-			shared.APIResponse{[m
+[31m-				Success: false,[m
+[31m-				Message: "invalid building id",[m
+[31m-			},[m
+[31m-		)[m
+[31m-[m
+[31m-		return[m
+[31m-	}[m
+[31m-[m
+[31m-	authUserID := r.Context().[m
+[31m-		Value([m
+[31m-			middleware.UserIDKey,[m
+[31m-		).[m
+[31m-		(string)[m
+[31m-[m
+[31m-	err = DeleteAcademyBuildingService([m
+[31m-		r.Context(),[m
+[31m-		authUserID,[m
+[31m-		buildingID,[m
+[31m-	)[m
+[31m-[m
+[31m-	if err != nil {[m
+[31m-[m
+[31m-		utils.WriteJSON([m
+[31m-			w,[m
+[31m-			http.StatusBadRequest,[m
+[31m-			shared.APIResponse{[m
+[31m-				Success: false,[m
+[31m-				Message: err.Error(),[m
+[31m-			},[m
+[31m-		)[m
+[31m-[m
+[31m-		return[m
+[31m-	}[m
+[31m-[m
+[31m-	utils.WriteJSON([m
+[31m-		w,[m
+[31m-		http.StatusOK,[m
+[31m-		shared.APIResponse{[m
+[31m-			Success: true,[m
+[31m-			Message: "building deleted successfully",[m
+[31m-		},[m
+[31m-	)[m
+[31m-}[m
+ [m
+ func UpdateAcademyBuildingHandler([m
+ 	w http.ResponseWriter,[m
+[1mdiff --git a/internal/academy/models.go b/internal/academy/models.go[m
+[1mindex 3b37246..c83efc8 100644[m
+[1m--- a/internal/academy/models.go[m
+[1m+++ b/internal/academy/models.go[m
+[36m@@ -184,4 +184,12 @@[m [mtype UpdateAcademyBuildingLaneInput struct {[m
+ [m
+ 	IsUnderMaintenance *bool `json:"is_under_maintenance,omitempty"`[m
+ [m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mtype EventResponse struct {[m
+[32m+[m	[32mID int64 `json:"id"`[m
+[32m+[m
+[32m+[m	[32mCode string `json:"code"`[m
+[32m+[m
+[32m+[m	[32mDisplayName string `json:"display_name"`[m
+ }[m
+\ No newline at end of file[m
+[1mdiff --git a/internal/academy/repository.go b/internal/academy/repository.go[m
+[1mindex b0a32ad..07178c1 100644[m
+[1m--- a/internal/academy/repository.go[m
+[1m+++ b/internal/academy/repository.go[m
+[36m@@ -1463,4 +1463,51 @@[m [mfunc DeleteAcademyBuildingRepository([m
+ 	)[m
+ [m
+ 	return err[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunc GetAcademyEventsRepository([m
+[32m+[m	[32mctx context.Context,[m
+[32m+[m[32m) ([]EventResponse, error) {[m
+[32m+[m
+[32m+[m	[32mrows, err := db.DB.Query([m
+[32m+[m		[32mctx,[m
+[32m+[m		[32m`[m
+[32m+[m		[32mSELECT[m
+[32m+[m			[32mid,[m
+[32m+[m			[32mcode,[m
+[32m+[m			[32mdisplay_name[m
+[32m+[m		[32mFROM shooting_events[m
+[32m+[m		[32mORDER BY display_name[m
+[32m+[m		[32m`,[m
+[32m+[m	[32m)[m
+[32m+[m
+[32m+[m	[32mif err != nil {[m
+[32m+[m		[32mreturn nil, err[m
+[32m+[m	[32m}[m
+[32m+[m
+[32m+[m	[32mdefer rows.Close()[m
+[32m+[m
+[32m+[m	[32mevents := []EventResponse{}[m
+[32m+[m
+[32m+[m	[32mfor rows.Next() {[m
+[32m+[m
+[32m+[m		[32mvar event EventResponse[m
+[32m+[m
+[32m+[m		[32merr := rows.Scan([m
+[32m+[m			[32m&event.ID,[m
+[32m+[m			[32m&event.Code,[m
+[32m+[m			[32m&event.DisplayName,[m
+[32m+[m		[32m)[m
+[32m+[m
+[32m+[m		[32mif err != nil {[m
+[32m+[m			[32mreturn nil, err[m
+[32m+[m		[32m}[m
+[32m+[m
+[32m+[m		[32mevents = append([m
+[32m+[m			[32mevents,[m
+[32m+[m			[32mevent,[m
+[32m+[m		[32m)[m
+[32m+[m	[32m}[m
+[32m+[m
+[32m+[m	[32mreturn events, nil[m
+ }[m
+\ No newline at end of file[m
+[1mdiff --git a/internal/academy/routes.go b/internal/academy/routes.go[m
+[1mindex d476585..742ccd1 100644[m
+[1m--- a/internal/academy/routes.go[m
+[1m+++ b/internal/academy/routes.go[m
+[36m@@ -166,6 +166,11 @@[m [mfunc RegisterRoutes(r chi.Router) {[m
+ 			// Building Events[m
+ 			// ==============================================[m
+ [m
+[32m+[m			[32mr.Get([m
+[32m+[m				[32m"/events",[m
+[32m+[m				[32mGetAcademyEventsHandler,[m
+[32m+[m			[32m)[m
+[32m+[m
+ 			r.Post([m
+ 				"/{buildingID}/events",[m
+ 				AddAcademyBuildingEventHandler,[m
+[1mdiff --git a/internal/academy/services.go b/internal/academy/services.go[m
+[1mindex 17f4af7..c8da77a 100644[m
+[1m--- a/internal/academy/services.go[m
+[1m+++ b/internal/academy/services.go[m
+[36m@@ -1102,4 +1102,13 @@[m [mfunc DeleteAcademyBuildingService([m
+ 		ctx,[m
+ 		buildingID,[m
+ 	)[m
+[32m+[m[32m}[m
+[32m+[m
+[32m+[m[32mfunc GetAcademyEventsService([m
+[32m+[m	[32mctx context.Context,[m
+[32m+[m[32m) ([]EventResponse, error) {[m
+[32m+[m
+[32m+[m	[32mreturn GetAcademyEventsRepository([m
+[32m+[m		[32mctx,[m
+[32m+[m	[32m)[m
+ }[m
+\ No newline at end of file[m

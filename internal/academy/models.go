@@ -185,3 +185,11 @@ type UpdateAcademyBuildingLaneInput struct {
 	IsUnderMaintenance *bool `json:"is_under_maintenance,omitempty"`
 
 }
+
+type EventResponse struct {
+	ID int64 `json:"id"`
+
+	Code string `json:"code"`
+
+	DisplayName string `json:"display_name"`
+}

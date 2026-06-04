@@ -1464,3 +1464,73 @@ func DeleteAcademyBuildingRepository(
 
 	return err
 }
+
+func GetAvailableBuildingEventsRepository(
+	ctx context.Context,
+	buildingID int64,
+) ([]EventResponse, error) {
+
+	rows, err := db.DB.Query(
+		ctx,
+		`
+		SELECT DISTINCT
+			se.id,
+			se.code,
+			se.display_name
+
+		FROM shooting_events se
+
+		INNER JOIN
+			academy_building_disciplines abd
+		ON
+			abd.discipline_id =
+				se.discipline_id
+
+		WHERE
+			abd.academy_building_id = $1
+
+		AND NOT EXISTS (
+			SELECT 1
+			FROM academy_building_events abe
+			WHERE
+				abe.academy_building_id = $1
+			AND
+				abe.shooting_event_id = se.id
+		)
+
+		ORDER BY
+			se.display_name
+		`,
+		buildingID,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	defer rows.Close()
+
+	events := []EventResponse{}
+
+	for rows.Next() {
+
+		var event EventResponse
+
+		err := rows.Scan(
+			&event.ID,
+			&event.Code,
+			&event.DisplayName,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		events = append(
+			events,
+			event,
+		)
+	}
+
+	return events, nil
+}

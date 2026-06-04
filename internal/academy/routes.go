@@ -166,6 +166,11 @@ func RegisterRoutes(r chi.Router) {
 			// Building Events
 			// ==============================================
 
+			r.Get(
+				"/{buildingID}/available-events",
+				GetAvailableBuildingEventsHandler,
+			)
+
 			r.Post(
 				"/{buildingID}/events",
 				AddAcademyBuildingEventHandler,
