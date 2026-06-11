@@ -336,6 +336,9 @@ func GetProfileCompletedStatus(
 	).Scan(&profileCompleted)
 
 	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
 		fmt.Print("Profile Complete Middleware : ", err)
 		return false, err
 	}
