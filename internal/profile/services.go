@@ -2,11 +2,13 @@ package profile
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"encoding/json"
 	"net/http"
 
 	"cobackend/internal/auth"
+	"cobackend/internal/shared"
 )
 
 func GetProfileService(
@@ -55,10 +57,14 @@ func GetProfileService(
 		)
 
 		if err != nil {
-			return ProfileResponse{}, err
+			if errors.Is(err, shared.ErrProfileNotFound) {
+				response.Profile = StateAdminProfileResponse{ProfileCompleted: false}
+			} else {
+				return ProfileResponse{}, err
+			}
+		} else {
+			response.Profile = stateAdminProfile
 		}
-
-		response.Profile = stateAdminProfile
 
 	case "district_admin":
 
@@ -68,10 +74,14 @@ func GetProfileService(
 		)
 
 		if err != nil {
-			return ProfileResponse{}, err
+			if errors.Is(err, shared.ErrProfileNotFound) {
+				response.Profile = DistrictAdminProfileResponse{ProfileCompleted: false}
+			} else {
+				return ProfileResponse{}, err
+			}
+		} else {
+			response.Profile = districtAdminProfile
 		}
-
-		response.Profile = districtAdminProfile
 
 	case "district_coach":
 
@@ -81,11 +91,14 @@ func GetProfileService(
 		)
 
 		if err != nil {
-			
-			return ProfileResponse{}, err
+			if errors.Is(err, shared.ErrProfileNotFound) {
+				response.Profile = DistrictCoachProfileResponse{ProfileCompleted: false}
+			} else {
+				return ProfileResponse{}, err
+			}
+		} else {
+			response.Profile = districtCoachProfile
 		}
-
-		response.Profile = districtCoachProfile
 
 	case "academy_admin":
 
@@ -95,10 +108,14 @@ func GetProfileService(
 		)
 
 		if err != nil {
-			return ProfileResponse{}, err
+			if errors.Is(err, shared.ErrProfileNotFound) {
+				response.Profile = AcademyAdminProfileResponse{ProfileCompleted: false}
+			} else {
+				return ProfileResponse{}, err
+			}
+		} else {
+			response.Profile = academyAdminProfile
 		}
-
-		response.Profile = academyAdminProfile
 
 	case "academy_coach":
 
@@ -108,10 +125,14 @@ func GetProfileService(
 		)
 
 		if err != nil {
-			return ProfileResponse{}, err
+			if errors.Is(err, shared.ErrProfileNotFound) {
+				response.Profile = AcademyCoachProfileResponse{ProfileCompleted: false}
+			} else {
+				return ProfileResponse{}, err
+			}
+		} else {
+			response.Profile = academyCoachProfile
 		}
-
-		response.Profile = academyCoachProfile
 
 	case "player":
 
@@ -121,11 +142,14 @@ func GetProfileService(
 		)
 
 		if err != nil {
-			
-			return ProfileResponse{}, err
+			if errors.Is(err, shared.ErrProfileNotFound) {
+				response.Profile = PlayerProfileResponse{ProfileCompleted: false}
+			} else {
+				return ProfileResponse{}, err
+			}
+		} else {
+			response.Profile = playerProfile
 		}
-
-		response.Profile = playerProfile
 
 	default:
 		return ProfileResponse{}, fmt.Errorf("unsupported role")

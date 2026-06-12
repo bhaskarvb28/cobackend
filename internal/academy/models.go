@@ -120,17 +120,13 @@ type BuildingEvent struct {
 }
 
 type AcademyBuilding struct {
-	ID int64 `json:"id"`
-
-	AcademyID string `json:"academy_id"`
-
-	BuildingName string `json:"building_name"`
-
-	IsActive bool `json:"is_active"`
-
-	Disciplines []BuildingDiscipline `json:"disciplines"`
-
-	Events []BuildingEvent `json:"events"`
+	ID           int64                         `json:"id"`
+	AcademyID    string                        `json:"academy_id"`
+	BuildingName string                        `json:"building_name"`
+	IsActive     bool                          `json:"is_active"`
+	Disciplines  []BuildingDiscipline          `json:"disciplines"`
+	Events       []BuildingEvent               `json:"events"`
+	Lanes        []AcademyBuildingLaneResponse `json:"lanes"`
 }
 
 // ==========================================================

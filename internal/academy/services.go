@@ -990,7 +990,7 @@ func UpdateAcademyBuildingLaneService(
 			input.LaneName,
 		)
 
-	if input.LaneName == "" {
+	if input.LaneName == "" && input.IsUnderMaintenance == nil {
 		return shared.ErrLaneNameRequired
 	}
 

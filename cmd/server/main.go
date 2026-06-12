@@ -79,6 +79,12 @@ func main() {
 		MaxAge: 300,
 	}))
 
+	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ok"}`))
+	})
+
 	r.Route("/api/v1", func(r chi.Router) {
 		auth.RegisterRoutes(r)
 		role.RegisterRoutes(r)

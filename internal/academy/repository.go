@@ -911,6 +911,21 @@ func GetAcademyBuildingsRepository(
 
 		building.Events = events
 
+		// ----------------------------------------------------------
+		// Get Building Lanes
+		// ----------------------------------------------------------
+
+		lanes, err := GetAcademyBuildingLanesRepository(
+			ctx,
+			building.ID,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		building.Lanes = lanes
+
 		buildings = append(
 			buildings,
 			building,
